@@ -4,7 +4,7 @@
   "VersionName": "1.0",
   "FriendlyName": "ECS",
   "Description": "Flecs and ECS extensions",
-  "Category": "ECS",
+  "Category": "Cuku",
   "CreatedBy": "Cuku",
   "CreatedByURL": "",
   "DocsURL": "https://www.flecs.dev/flecs/index.html",
