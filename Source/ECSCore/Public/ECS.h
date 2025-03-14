@@ -17,11 +17,11 @@ public:
 	virtual void Deinitialize() override;
 	flecs::world* World() const;
 
+private:
+	bool Tick(float DeltaTime);
+
 protected:
 	FTickerDelegate OnTickDelegate;
 	FTSTicker::FDelegateHandle OnTickHandle;
 	flecs::world* world = nullptr;
-
-private:
-	bool Tick(float DeltaTime);
 };
