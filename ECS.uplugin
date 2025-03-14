@@ -16,7 +16,7 @@
   "Installed": false,
   "Modules": [
     {
-      "Name": "ECS",
+      "Name": "ECSCore",
       "Type": "Runtime",
       "LoadingPhase": "Default"
     },
