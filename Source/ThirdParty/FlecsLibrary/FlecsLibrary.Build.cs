@@ -10,8 +10,7 @@ public class FlecsLibrary : ModuleRules
 		CppStandard = CppStandardVersion.Cpp20;
 		bUseUnity = false;
 
-		PublicDependencyModuleNames.AddRange(new string[]
-		{
+		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core",
 			"CoreUObject",
 			"Engine",
@@ -20,20 +19,14 @@ public class FlecsLibrary : ModuleRules
 		});
 
 		if (Target.LinkType == TargetLinkType.Monolithic)
-		{
 			PublicDefinitions.Add("flecs_STATIC");
-		}
 		else
-		{
 			PrivateDefinitions.Add("flecs_EXPORTS");
-		}
 
 		PublicDefinitions.Add("FLECS_CPP_NO_AUTO_REGISTRATION = 1");
 
 		if (Target.Configuration < UnrealTargetConfiguration.Test)
-		{
 			PublicDefinitions.Add("FLECS_SOFT_ASSERT = 1");
-		}
 
 		if (Target.Configuration < UnrealTargetConfiguration.Development)
 		{

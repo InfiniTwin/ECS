@@ -18,26 +18,20 @@ void UECS::Initialize(FSubsystemCollectionBase& Collection)
 	World()->import<flecs::stats>();
 	World()->set<flecs::Rest>({});
 
-	UE_LOG(LogTemp, Warning, TEXT("ECS Subsystem initialized!"));
 	Super::Initialize(Collection);
 }
 
 void UECS::Deinitialize()
 {
 	FTSTicker::GetCoreTicker().RemoveTicker(OnTickHandle);
+	delete world;
+	world = nullptr;
 
-	if (world)
-	{
-		delete world;
-		world = nullptr;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("ECS Subsystem deinitialized!"));
 	Super::Deinitialize();
 }
 
 bool UECS::Tick(float DeltaTime)
 {
-	if (world) world->progress(DeltaTime);
+	world->progress(DeltaTime);
 	return true;
 }

@@ -16,12 +16,12 @@
   "Installed": false,
   "Modules": [
     {
-      "Name": "ECSCore",
+      "Name": "FlecsLibrary",
       "Type": "Runtime",
-      "LoadingPhase": "Default"
+      "LoadingPhase": "PreDefault"
     },
     {
-      "Name": "FlecsLibrary",
+      "Name": "ECSCore",
       "Type": "Runtime",
       "LoadingPhase": "PreDefault"
     }
