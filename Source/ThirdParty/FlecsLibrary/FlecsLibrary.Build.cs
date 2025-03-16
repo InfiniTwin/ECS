@@ -7,33 +7,16 @@ public class FlecsLibrary : ModuleRules
 	public FlecsLibrary(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-		CppStandard = CppStandardVersion.Cpp20;
-		bUseUnity = false;
 
-		PublicDependencyModuleNames.AddRange(new string[] {
-			"Core",
-			"CoreUObject",
-			"Engine",
-			"Json",
-			"JsonUtilities"
-		});
+		PublicDependencyModuleNames.AddRange(new string[] { "Core" });
 
-		if (Target.LinkType == TargetLinkType.Monolithic)
-			PublicDefinitions.Add("flecs_STATIC");
-		else
-			PrivateDefinitions.Add("flecs_EXPORTS");
+		//The path for the header files
+		PublicIncludePaths.AddRange(new string[] { "FlecsLibrary/Public" });
+		//The path for the source files
+		PrivateIncludePaths.AddRange(new string[] { "FlecsLibrary/Private" });
 
-		PublicDefinitions.Add("FLECS_CPP_NO_AUTO_REGISTRATION = 1");
+		if (Target.Platform != UnrealTargetPlatform.Win64) AppendStringToPublicDefinition("flecs_EXPORTS", "0");
 
-		if (Target.Configuration < UnrealTargetConfiguration.Test)
-			PublicDefinitions.Add("FLECS_SOFT_ASSERT = 1");
-
-		if (Target.Configuration < UnrealTargetConfiguration.Development)
-		{
-			// A cheesy way to turn off NDEBUG for Flecs
-			PublicDefinitions.Add("DUMMYDEFINE\n#ifdef NDEBUG\n#undef NDEBUG\n#endif");
-			PublicDefinitions.Add("FLECS_DEBUG = 1");
-			PublicDefinitions.Add("FLECS_SANITIZE = 1");
-		}
+		PrivateDefinitions.Add("flecs_EXPORTS");
 	}
 }

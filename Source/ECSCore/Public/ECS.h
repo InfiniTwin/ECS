@@ -13,9 +13,10 @@ class ECSCORE_API UECS : public UGameInstanceSubsystem
 	GENERATED_BODY()
 
 public:
+	TUniquePtr<flecs::world> World;
+
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
-	flecs::world* World() const;
 
 private:
 	bool Tick(float DeltaTime);
@@ -23,5 +24,4 @@ private:
 protected:
 	FTickerDelegate OnTickDelegate;
 	FTSTicker::FDelegateHandle OnTickHandle;
-	flecs::world* world = nullptr;
 };

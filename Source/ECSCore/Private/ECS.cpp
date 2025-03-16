@@ -3,8 +3,6 @@
 
 #include "ECS.h"
 
-flecs::world* UECS::World() const { return world; }
-
 void UECS::Initialize(FSubsystemCollectionBase& Collection)
 {
 	OnTickDelegate = FTickerDelegate::CreateUObject(this, &UECS::Tick);
@@ -12,11 +10,11 @@ void UECS::Initialize(FSubsystemCollectionBase& Collection)
 
 	char name[] = { "ECS" };
 	char* argv = name;
-	world = new flecs::world(1, &argv);
+	World = MakeUnique<flecs::world>(1, &argv);
 
 	// Flecs Explorer:  https://www.flecs.dev/explorer/
-	World()->import<flecs::stats>();
-	World()->set<flecs::Rest>({});
+	World->import<flecs::stats>();
+	World->set<flecs::Rest>({});
 
 	Super::Initialize(Collection);
 }
@@ -24,14 +22,13 @@ void UECS::Initialize(FSubsystemCollectionBase& Collection)
 void UECS::Deinitialize()
 {
 	FTSTicker::GetCoreTicker().RemoveTicker(OnTickHandle);
-	delete world;
-	world = nullptr;
+	World.Reset();
 
 	Super::Deinitialize();
 }
 
 bool UECS::Tick(float DeltaTime)
 {
-	world->progress(DeltaTime);
+	World->progress(DeltaTime);
 	return true;
 }
