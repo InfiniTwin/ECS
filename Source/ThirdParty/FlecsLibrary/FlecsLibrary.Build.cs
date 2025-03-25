@@ -10,9 +10,7 @@ public class FlecsLibrary : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core" });
 
-		PublicIncludePaths.AddRange(new string[] { "FlecsLibrary/Public" });
 
-		PrivateIncludePaths.AddRange(new string[] { "FlecsLibrary/Private" });
 
 		if (Target.Platform != UnrealTargetPlatform.Win64) 
 			AppendStringToPublicDefinition("flecs_EXPORTS", "0");
