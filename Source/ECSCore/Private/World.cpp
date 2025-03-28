@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "World.h"
+#include "Assets.h"
 
 void World::DeserializeSingletons(flecs::world& world, const FString key) {
 	auto data = Assets::LoadJsonAsset(key);

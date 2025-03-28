@@ -3,8 +3,6 @@
 #pragma once
 
 #include <flecs.h>
-#include "Assets.h"
-#include <string>
 
 struct ECSCORE_API World {
 public:

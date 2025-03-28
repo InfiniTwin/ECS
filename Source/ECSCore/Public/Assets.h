@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-
 struct ECSCORE_API Assets
 {
 public:
