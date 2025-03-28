@@ -10,8 +10,6 @@ public class FlecsLibrary : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core" });
 
-
-
 		if (Target.Platform != UnrealTargetPlatform.Win64) 
 			AppendStringToPublicDefinition("flecs_EXPORTS", "0");
 
