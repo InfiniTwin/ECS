@@ -2,16 +2,13 @@
 
 #pragma once
 
-struct ECSCORE_API Assets
-{
+inline constexpr TCHAR AssetsFolder[] = TEXT("Assets");
+inline constexpr TCHAR JsonExtension[] = TEXT(".json");
+
+struct ECSCORE_API Assets {
 public:
-    static char* LoadJsonAsset(const FString& Key);
-    static bool SaveJsonAsset(const FString& Key, const FString& Content);
-
-private:
-    static constexpr const TCHAR* Root = TEXT("Assets");
-    static constexpr const TCHAR* JsonExtension = TEXT(".json");
-
-    static FString GetAssetPath(const FString& Filename);
-    static FString GetSavePath(const FString& Filename);
+	static char* LoadJsonAsset(const FString& Key);
+	static bool SaveJsonAsset(const FString& Key, const FString& Content);
+	static FString GetAssetPath(const FString& Filename);
+	static FString GetSavePath(const FString& Filename);
 };

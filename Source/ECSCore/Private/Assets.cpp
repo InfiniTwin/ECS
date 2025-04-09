@@ -22,12 +22,12 @@ bool Assets::SaveJsonAsset(const FString& Key, const FString& Content) {
 }
 
 FString Assets::GetAssetPath(const FString& Filename) {
-	FString LocalPath = FPaths::Combine(FPaths::ProjectSavedDir(), Root, Filename);
+	FString LocalPath = FPaths::Combine(FPaths::ProjectSavedDir(), AssetsFolder, Filename);
 	return FPaths::FileExists(LocalPath)
 		? LocalPath
-		: FPaths::Combine(FPaths::ProjectContentDir(), Root, Filename);
+		: FPaths::Combine(FPaths::ProjectContentDir(), AssetsFolder, Filename);
 }
 
 FString Assets::GetSavePath(const FString& Filename) {
-	return FPaths::Combine(FPaths::ProjectSavedDir(), Root, Filename);
+	return FPaths::Combine(FPaths::ProjectSavedDir(), AssetsFolder, Filename);
 }

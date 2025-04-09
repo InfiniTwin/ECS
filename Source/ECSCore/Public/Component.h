@@ -9,5 +9,5 @@
 
 struct ECSCORE_API Component {
 public:
-	static void DeserializeSingletons(flecs::world& world, const FString key);
+	static void SingletonsFromAsset(flecs::world& world, const FString key);
 };

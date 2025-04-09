@@ -3,11 +3,12 @@
 #include "Component.h"
 #include "Assets.h"
 
-void Component::DeserializeSingletons(flecs::world& world, const FString key) {
+void Component::SingletonsFromAsset(flecs::world& world, const FString key) {
 	auto data = Assets::LoadJsonAsset(key);
 
-	auto singletonsEntity = world.entity("SingletonsEntity");
+	auto singletonsEntity = world.entity().disable();
 	singletonsEntity.from_json(data);
+	free(data);
 
 	singletonsEntity.each([&](flecs::id id) {
 		const ecs_type_info_t* info = ecs_get_type_info(world, id);
@@ -15,5 +16,5 @@ void Component::DeserializeSingletons(flecs::world& world, const FString key) {
 		ecs_set_id(world, world.entity(id), id, info->size, ptr);
 		});
 
-	free(data);
+	singletonsEntity.destruct();
 }
