@@ -2,13 +2,65 @@
 
 #pragma once
 
+#include "Misc/FileHelper.h"
+#include "HAL/PlatformFilemanager.h"
+#include "Misc/Paths.h"
+
 inline constexpr TCHAR AssetsFolder[] = TEXT("Assets");
 inline constexpr TCHAR JsonExtension[] = TEXT(".json");
+inline constexpr TCHAR TextExtension[] = TEXT(".txt");
 
-struct ECSCORE_API Assets {
+struct Assets {
 public:
-	static char* LoadJsonAsset(const FString& Key);
-	static bool SaveJsonAsset(const FString& Key, const FString& Content);
-	static FString GetAssetPath(const FString& Filename);
-	static FString GetSavePath(const FString& Filename);
+	template<typename... Args>
+	static inline char* LoadJsonAsset(Args... args) {
+		FString content;
+		if (!FFileHelper::LoadFileToString(content, *GetAssetPath(JsonExtension, args...)))
+			return _strdup("");
+		return _strdup(TCHAR_TO_UTF8(*content));
+	}
+
+	template<typename... Args>
+	static inline bool SaveJsonAsset(const FString& content, Args... args) {
+		FString path = GetSavePath(JsonExtension, args...);
+		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
+		FString folderPath = FPaths::GetPath(path);
+		while (!folderPath.IsEmpty()) {
+			if (!platformFile.DirectoryExists(*folderPath)) {
+				platformFile.CreateDirectory(*folderPath);
+			}
+			folderPath = FPaths::GetPath(folderPath);
+		}
+
+		return FFileHelper::SaveStringToFile(content, *path);
+	}
+
+	template<typename... Args>
+	static inline std::vector<std::string> GetFolders(const FString& path) {
+		std::vector<std::string> folders;
+		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
+
+		platformFile.IterateDirectoryStat(*path, [&folders](const TCHAR* child, const FFileStatData& stat) -> bool {
+			if (stat.bIsDirectory)
+				folders.push_back(TCHAR_TO_UTF8(*FPaths::GetCleanFilename(child)));
+			return true;
+			});
+
+		return folders;
+	}
+
+	template<typename... Args>
+	static inline FString GetAssetPath(const FString& extension, Args&&... args) {
+		FString localPath = FPaths::Combine(AssetsFolder, args...) + extension;
+		FString savePath = FPaths::Combine(FPaths::ProjectSavedDir(), localPath);
+		return FPaths::FileExists(savePath)
+			? savePath
+			: FPaths::Combine(FPaths::ProjectContentDir(), localPath);
+	}
+
+	template<typename... Args>
+	static inline FString GetSavePath(const FString& extension, Args... args) {
+		return FPaths::Combine(FPaths::ProjectSavedDir(), AssetsFolder, args...) + extension;
+	}
 };
+

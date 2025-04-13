@@ -2,26 +2,59 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Subsystems/GameInstanceSubsystem.h"
-#include "flecs.h"
-#include "ECS.generated.h"
+#include <flecs.h>
+#include "Assets.h"
 
-UCLASS()
-class ECSCORE_API UECS : public UGameInstanceSubsystem
-{
-	GENERATED_BODY()
+#define COMPONENT(T) ([] { return #T; }())
 
+constexpr const char* Member(const char* str) {
+	const char* lastColon = str;
+	for (const char* ptr = str; *ptr != '\0'; ++ptr)
+		if (*ptr == ':')
+			lastColon = ptr + 1;
+	return lastColon;
+}
+#define MEMBER(str) Member(#str)
+
+struct ECS {
 public:
-	TUniquePtr<flecs::world> World;
+	static inline void SingletonsFromAsset(flecs::world& world, const FString name) {
+		auto data = Assets::LoadJsonAsset(name);
 
-	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
-	virtual void Deinitialize() override;
+		auto singletonsEntity = world.entity().disable();
+		singletonsEntity.from_json(data);
+		free(data);
 
-private:
-	bool Tick(float DeltaTime);
+		singletonsEntity.each([&](flecs::id id) {
+			const ecs_type_info_t* info = ecs_get_type_info(world, id);
+			const void* ptr = singletonsEntity.get(id);
+			ecs_set_id(world, world.entity(id), id, info->size, ptr);
+			});
 
-protected:
-	FTickerDelegate OnTickDelegate;
-	FTSTicker::FDelegateHandle OnTickHandle;
+		singletonsEntity.destruct();
+	}
+
+    static inline void EntitiesFromAsset(flecs::world& world, const FString name) {
+        auto data = Assets::LoadJsonAsset(name);
+
+        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(data);
+        free(data);
+        TSharedPtr<FJsonValue> RootValue;
+
+        if (FJsonSerializer::Deserialize(Reader, RootValue)) {
+            const TArray<TSharedPtr<FJsonValue>>* ArrayValue = nullptr;
+
+            if (RootValue->TryGetArray(ArrayValue)) {
+                int32 index = 0;
+                for (const TSharedPtr<FJsonValue>& Element : *ArrayValue) {
+                    FString JsonString;
+                    FJsonSerializer::Serialize(Element->AsObject().ToSharedRef(), TJsonWriterFactory<>::Create(&JsonString));
+                    const char* ElementString = TCHAR_TO_UTF8(*JsonString);
+                    world.entity().from_json(ElementString);
+                    UE_LOG(LogTemp, Log, TEXT("Element %d >>> %s"), index + 1, *FString(ElementString));
+                    index++;
+                }
+            }
+        }
+    }
 };

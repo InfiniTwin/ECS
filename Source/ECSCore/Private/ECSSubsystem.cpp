@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "ECS.h"
+#include "ECSSubsystem.h"
 
 #if PLATFORM_WINDOWS
 #include "Windows/WindowsHWrapper.h"
@@ -9,9 +9,9 @@
 #include "Windows/AllowWindowsPlatformAtomics.h"
 #endif
 
-void UECS::Initialize(FSubsystemCollectionBase& Collection)
+void UECSSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	OnTickDelegate = FTickerDelegate::CreateUObject(this, &UECS::Tick);
+	OnTickDelegate = FTickerDelegate::CreateUObject(this, &UECSSubsystem::Tick);
 	OnTickHandle = FTSTicker::GetCoreTicker().AddTicker(OnTickDelegate);
 
 	char name[] = { "ECS" };
@@ -25,7 +25,7 @@ void UECS::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 }
 
-void UECS::Deinitialize()
+void UECSSubsystem::Deinitialize()
 {
 	FTSTicker::GetCoreTicker().RemoveTicker(OnTickHandle);
 	World.Reset();
@@ -33,7 +33,7 @@ void UECS::Deinitialize()
 	Super::Deinitialize();
 }
 
-bool UECS::Tick(float DeltaTime)
+bool UECSSubsystem::Tick(float DeltaTime)
 {
 	World->progress(DeltaTime);
 	return true;

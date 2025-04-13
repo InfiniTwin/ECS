@@ -9,15 +9,15 @@ public class ECSCore : ModuleRules
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] {
-				"Core",
-				"Json",
-				"FlecsLibrary"
-			});
+			"Core",
+			"Json",
+			"FlecsLibrary"
+		});
 
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
-				"CoreUObject",
-				"Engine",
-			});
+			"CoreUObject",
+			"Engine",
+		});
 	}
 }
