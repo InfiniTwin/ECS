@@ -20,7 +20,6 @@ struct ECS {
 public:
 	static inline void SingletonsFromAsset(flecs::world& world, const FString name) {
 		auto data = Assets::LoadJsonAsset(name);
-
 		auto singletonsEntity = world.entity().disable();
 		singletonsEntity.from_json(data);
 		free(data);
@@ -36,7 +35,6 @@ public:
 
     static inline void EntitiesFromAsset(flecs::world& world, const FString name) {
         auto data = Assets::LoadJsonAsset(name);
-
         TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(data);
         free(data);
         TSharedPtr<FJsonValue> RootValue;
@@ -51,7 +49,6 @@ public:
                     FJsonSerializer::Serialize(Element->AsObject().ToSharedRef(), TJsonWriterFactory<>::Create(&JsonString));
                     const char* ElementString = TCHAR_TO_UTF8(*JsonString);
                     world.entity().from_json(ElementString);
-                    UE_LOG(LogTemp, Log, TEXT("Element %d >>> %s"), index + 1, *FString(ElementString));
                     index++;
                 }
             }
