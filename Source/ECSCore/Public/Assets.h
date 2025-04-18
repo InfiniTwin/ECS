@@ -26,9 +26,8 @@ public:
 		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
 		FString folderPath = FPaths::GetPath(path);
 		while (!folderPath.IsEmpty()) {
-			if (!platformFile.DirectoryExists(*folderPath)) {
+			if (!platformFile.DirectoryExists(*folderPath))
 				platformFile.CreateDirectory(*folderPath);
-			}
 			folderPath = FPaths::GetPath(folderPath);
 		}
 
@@ -36,13 +35,13 @@ public:
 	}
 
 	template<typename... Args>
-	static inline std::vector<std::string> GetFolders(const FString& path) {
-		std::vector<std::string> folders;
+	static inline std::vector<FString> GetFolders(const FString& path) {
+		std::vector<FString> folders;
 		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
 
 		platformFile.IterateDirectoryStat(*path, [&folders](const TCHAR* child, const FFileStatData& stat) -> bool {
 			if (stat.bIsDirectory)
-				folders.push_back(TCHAR_TO_UTF8(*FPaths::GetCleanFilename(child)));
+				folders.push_back(*FPaths::GetCleanFilename(child));
 			return true;
 			});
 
