@@ -11,13 +11,12 @@ public class ECSCore : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core",
 			"Json",
-			"FlecsLibrary"
+			"FlecsLibrary",
 		});
-
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
 			"CoreUObject",
 			"Engine",
-		});
+        });
 	}
 }
