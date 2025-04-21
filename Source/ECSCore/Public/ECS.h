@@ -37,25 +37,6 @@ public:
 		singletonsEntity.destruct();
 	}
 
-	//static inline void EntitiesFromAsset(flecs::world& world, const FString name) {
-	//	ecs_log_set_level(-1);
-	//	
-	//	auto data = Assets::LoadJsonAsset(name); // keep this as-is
-	//	std::string utf8Json = TCHAR_TO_UTF8(data); // use raw string, no re-serialization
-	//	free(data); // keep this as-is
-
-	//	ecs_from_json_desc_t desc = {};
-
-	//	const char* result = ecs_world_from_json(world.c_ptr(), utf8Json.c_str(), &desc);
-
-	//	if (result) {
-	//		UE_LOG(LogTemp, Error, TEXT("ecs_world_from_json failed at: %s"), *FString(result));
-	//	}
-	//	else {
-	//		UE_LOG(LogTemp, Log, TEXT("Successfully loaded entities from asset: %s"), *name);
-	//	}
-	//}
-
 	static inline void EntitiesFromAsset(flecs::world& world, const FString name) {
 		auto data = Assets::LoadJsonAsset(name);
 		TSharedRef<TJsonReader<>> reader = TJsonReaderFactory<>::Create(data);
@@ -68,9 +49,10 @@ public:
 			if (rootObject->TryGetArrayField(EntitiesField, entities)) {
 				int32 index = 0;
 				for (const TSharedPtr<FJsonValue>& entity : *entities) {
-					FString jsonString;
-					FJsonSerializer::Serialize(entity->AsObject().ToSharedRef(), TJsonWriterFactory<>::Create(&jsonString));
-					std::string entityJson = TCHAR_TO_UTF8(*jsonString);
+					FString entityJsonString;
+					FJsonSerializer::Serialize(entity->AsObject().ToSharedRef(),
+						TJsonWriterFactory<>::Create(&entityJsonString));
+					std::string entityJson = TCHAR_TO_UTF8(*entityJsonString);
 					world.entity().from_json(entityJson.c_str());
 					index++;
 				}
@@ -80,19 +62,19 @@ public:
 		// Create ChildOf relationships
 		const TArray<TSharedPtr<FJsonValue>>* childOfArray = nullptr;
 		if (rootObject->TryGetArrayField(MEMBER(flecs::ChildOf), childOfArray)) {
-			for (const TSharedPtr<FJsonValue>& relVal : *childOfArray) {
-				const TSharedPtr<FJsonObject>* relObj;
-				relVal->TryGetObject(relObj);
+			for (const TSharedPtr<FJsonValue>& childOfValue : *childOfArray) {
+				const TSharedPtr<FJsonObject>* childOfObject;
+				childOfValue->TryGetObject(childOfObject);
 
 				FString parentName;
-				(*relObj)->TryGetStringField(ParentField, parentName);
+				(*childOfObject)->TryGetStringField(ParentField, parentName);
 				flecs::entity parent = world.lookup(TCHAR_TO_UTF8(*parentName));
 
 				const TArray<TSharedPtr<FJsonValue>>* children = nullptr;
-				(*relObj)->TryGetArrayField(ChildrenField, children);
-				for (const TSharedPtr<FJsonValue>& childVal : *children) {
+				(*childOfObject)->TryGetArrayField(ChildrenField, children);
+				for (const TSharedPtr<FJsonValue>& childValue : *children) {
 					FString childName;
-					childVal->TryGetString(childName);
+					childValue->TryGetString(childName);
 					world.lookup(TCHAR_TO_UTF8(*childName)).add(flecs::ChildOf, parent);
 				}
 			}
