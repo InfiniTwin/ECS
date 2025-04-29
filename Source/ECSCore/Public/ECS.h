@@ -16,6 +16,8 @@ constexpr const char* Member(const char* str) {
 }
 #define MEMBER(str) Member(#str)
 
+constexpr const char* VALUE = "Value";
+
 constexpr const char* SingletonsField = "singletons";
 constexpr const char* EntitiesField = "entities";
 constexpr const char* ParentField = "parent";
@@ -38,8 +40,8 @@ public:
 			FString singletonsJsonString;
 			FJsonSerializer::Serialize(singletons->ToSharedRef(),
 				TJsonWriterFactory<>::Create(&singletonsJsonString));
-			std::string singletonsJson = TCHAR_TO_UTF8(*singletonsJsonString); 
-			
+			std::string singletonsJson = TCHAR_TO_UTF8(*singletonsJsonString);
+
 			auto singletonsEntity = world.entity().disable();
 			singletonsEntity.from_json(singletonsJson.c_str());
 
@@ -61,29 +63,9 @@ public:
 				FJsonSerializer::Serialize(entity->AsObject().ToSharedRef(),
 					TJsonWriterFactory<>::Create(&entityJsonString));
 				std::string entityJson = TCHAR_TO_UTF8(*entityJsonString);
+				world.set_scope(flecs::entity());
 				world.entity().from_json(entityJson.c_str());
 				index++;
-			}
-		}
-
-		// Create ChildOf relationships
-		const TArray<TSharedPtr<FJsonValue>>* childOfRelationships = nullptr;
-		if (rootObject->TryGetArrayField(MEMBER(flecs::ChildOf), childOfRelationships)) {
-			for (const TSharedPtr<FJsonValue>& childOfValue : *childOfRelationships) {
-				const TSharedPtr<FJsonObject>* childOfObject;
-				childOfValue->TryGetObject(childOfObject);
-
-				FString parentName;
-				(*childOfObject)->TryGetStringField(ParentField, parentName);
-				flecs::entity parent = world.lookup(TCHAR_TO_UTF8(*parentName));
-
-				const TArray<TSharedPtr<FJsonValue>>* children = nullptr;
-				(*childOfObject)->TryGetArrayField(ChildrenField, children);
-				for (const TSharedPtr<FJsonValue>& childValue : *children) {
-					FString childName;
-					childValue->TryGetString(childName);
-					world.lookup(TCHAR_TO_UTF8(*childName)).add(flecs::ChildOf, parent);
-				}
 			}
 		}
 	}
