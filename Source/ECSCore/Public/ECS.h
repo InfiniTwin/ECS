@@ -20,8 +20,6 @@ constexpr const char* VALUE = "Value";
 
 constexpr const char* SingletonsField = "singletons";
 constexpr const char* EntitiesField = "entities";
-constexpr const char* ParentField = "parent";
-constexpr const char* ChildrenField = "children";
 
 struct ECS {
 public:
@@ -50,7 +48,7 @@ public:
 				const ecs_type_info_t* info = ecs_get_type_info(world, id);
 				const void* ptr = singletonsEntity.get(id);
 				ecs_set_id(world, world.entity(id), id, info->size, ptr);
-			});
+				});
 
 			singletonsEntity.destruct();
 		}
@@ -80,6 +78,28 @@ public:
 
 		int32 cursor = 0;
 		while (true) {
+			cursor = out.Find(TEXT("\"parent\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
+			if (cursor == INDEX_NONE) break;
+			int32 quote = out.Find(TEXT("\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor + 8);
+			if (quote == INDEX_NONE) break;
+			while (quote < out.Len() && out[quote] != '"') ++quote;
+			if (quote >= out.Len()) break;
+			int32 valStart = quote + 1, valEnd = valStart;
+			while (valEnd < out.Len() && out[valEnd] != '"') { if (out[valEnd] == '\\') ++valEnd; ++valEnd; }
+			FString val = out.Mid(valStart, valEnd - valStart);
+			bool scoped = val.StartsWith(plainPrefix) && (val.Len() == plainPrefix.Len() || val.Mid(plainPrefix.Len(), 1) == TEXT("."));
+			if (!scoped) {
+				FString newVal = val.IsEmpty() ? plainPrefix : dotPrefix + val;
+				out = out.Left(valStart) + newVal + out.Mid(valEnd);
+				int32 delta = newVal.Len() - val.Len();
+				valEnd += delta;
+				cursor = valEnd;
+			}
+			else cursor = valEnd;
+		}
+
+		cursor = 0;
+		while (true) {
 			cursor = out.Find(TEXT("\"tags\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
 			if (cursor == INDEX_NONE) break;
 			int32 open = out.Find(TEXT("["), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
@@ -100,7 +120,8 @@ public:
 					int32 delta = newTag.Len() - tag.Len();
 					end += delta;
 					i = end;
-				} else i = end;
+				}
+				else i = end;
 				++i;
 			}
 			cursor = i;
@@ -131,30 +152,42 @@ public:
 					int32 delta = newKey.Len() - key.Len();
 					end += delta;
 					i = colon + delta;
-				} else i = colon;
+				}
+				else i = colon;
 			}
 			cursor = i;
 		}
 
 		cursor = 0;
 		while (true) {
-			cursor = out.Find(TEXT("\"parent\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
+			cursor = out.Find(TEXT("\"flecs.core.IsA\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
 			if (cursor == INDEX_NONE) break;
-			int32 quote = out.Find(TEXT("\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor + 8);
-			if (quote == INDEX_NONE) break;
-			while (quote < out.Len() && out[quote] != '"') ++quote;
-			if (quote >= out.Len()) break;
-			int32 valStart = quote + 1, valEnd = valStart;
-			while (valEnd < out.Len() && out[valEnd] != '"') { if (out[valEnd] == '\\') ++valEnd; ++valEnd; }
-			FString val = out.Mid(valStart, valEnd - valStart);
-			bool scoped = val.StartsWith(plainPrefix) && (val.Len() == plainPrefix.Len() || val.Mid(plainPrefix.Len(), 1) == TEXT("."));
-			if (!scoped) {
-				FString newVal = val.IsEmpty() ? plainPrefix : dotPrefix + val;
-				out = out.Left(valStart) + newVal + out.Mid(valEnd);
-				int32 delta = newVal.Len() - val.Len();
-				valEnd += delta;
-				cursor = valEnd;
-			} else cursor = valEnd;
+			int32 arrayStart = out.Find(TEXT("["), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+			if (arrayStart == INDEX_NONE) break;
+			int32 i = arrayStart + 1;
+			while (true) {
+				while (i < out.Len() && FChar::IsWhitespace(out[i])) ++i;
+				if (i >= out.Len() || out[i] == ']') { ++i; break; }
+				if (out[i] != '"') { ++i; continue; }
+
+				int32 valStart = i + 1, valEnd = valStart;
+				while (valEnd < out.Len() && out[valEnd] != '"') { if (out[valEnd] == '\\') ++valEnd; ++valEnd; }
+
+				FString val = out.Mid(valStart, valEnd - valStart);
+				bool scoped = val.StartsWith(plainPrefix) && (val.Len() == plainPrefix.Len() || val.Mid(plainPrefix.Len(), 1) == TEXT("."));
+				bool flecs = val.StartsWith(TEXT("flecs"));
+				if (!scoped && !flecs) {
+					FString newVal = dotPrefix + val;
+					out = out.Left(valStart) + newVal + out.Mid(valEnd);
+					int32 delta = newVal.Len() - val.Len();
+					valEnd += delta;
+					i = valEnd;
+				}
+				else i = valEnd;
+
+				++i;
+			}
+			cursor = i;
 		}
 
 		return out;
