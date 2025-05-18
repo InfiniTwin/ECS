@@ -76,6 +76,8 @@ public:
 		const FString dotPrefix = plainPrefix + TEXT(".");
 		FString out = in;
 
+		if (in.Contains(TEXT("\"singletons\"")) && !in.Contains(TEXT("\"entities\""))) return in;
+
 		// Parent
 		int32 cursor = 0;
 		while (true) {
@@ -187,7 +189,14 @@ public:
 		while (true) {
 			cursor = out.Find(TEXT("\"components\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
 			if (cursor == INDEX_NONE) break;
-			if (!skippedSingletons) { skippedSingletons = true; cursor += 12; continue; }
+			if (!skippedSingletons) {
+				int32 singletonsIndex = out.Find(TEXT("\"singletons\""));
+				if (singletonsIndex != INDEX_NONE && singletonsIndex < cursor) {
+					skippedSingletons = true;
+					cursor += 12;
+					continue;
+				}
+			}
 			int32 open = out.Find(TEXT("{"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
 			if (open == INDEX_NONE) break;
 			int32 depth = 1, i = open + 1;
