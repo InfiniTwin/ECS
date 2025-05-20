@@ -10,32 +10,23 @@ inline constexpr TCHAR AssetsFolder[] = TEXT("Assets");
 inline constexpr TCHAR JsonExtension[] = TEXT(".json");
 inline constexpr TCHAR TextExtension[] = TEXT(".txt");
 
-struct Assets {
-public:
+namespace Assets {
 	template<typename... Args>
-	static inline char* LoadJsonAsset(Args... args) {
-		FString content;
-		if (!FFileHelper::LoadFileToString(content, *GetAssetPath(JsonExtension, args...)))
-			return _strdup("");
-		return _strdup(TCHAR_TO_UTF8(*content));
+	inline FString GetSavePath(const FString& extension, Args... args) {
+		return FPaths::Combine(FPaths::ProjectSavedDir(), AssetsFolder, args...) + extension;
 	}
 
 	template<typename... Args>
-	static inline bool SaveJsonAsset(const FString& content, Args... args) {
-		FString path = GetSavePath(JsonExtension, args...);
-		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
-		FString folderPath = FPaths::GetPath(path);
-		while (!folderPath.IsEmpty()) {
-			if (!platformFile.DirectoryExists(*folderPath))
-				platformFile.CreateDirectory(*folderPath);
-			folderPath = FPaths::GetPath(folderPath);
-		}
-
-		return FFileHelper::SaveStringToFile(content, *path);
+	inline FString GetAssetPath(const FString& extension, Args&&... args) {
+		FString localPath = FPaths::Combine(AssetsFolder, args...) + extension;
+		FString savePath = FPaths::Combine(FPaths::ProjectSavedDir(), localPath);
+		return FPaths::FileExists(savePath)
+			? savePath
+			: FPaths::Combine(FPaths::ProjectContentDir(), localPath);
 	}
 
 	template<typename... Args>
-	static inline std::vector<FString> GetFolders(const FString& path) {
+	inline std::vector<FString> GetFolders(const FString& path) {
 		std::vector<FString> folders;
 		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
 
@@ -49,17 +40,24 @@ public:
 	}
 
 	template<typename... Args>
-	static inline FString GetAssetPath(const FString& extension, Args&&... args) {
-		FString localPath = FPaths::Combine(AssetsFolder, args...) + extension;
-		FString savePath = FPaths::Combine(FPaths::ProjectSavedDir(), localPath);
-		return FPaths::FileExists(savePath)
-			? savePath
-			: FPaths::Combine(FPaths::ProjectContentDir(), localPath);
+	inline bool SaveJsonAsset(const FString& content, Args... args) {
+		FString path = GetSavePath(JsonExtension, args...);
+		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
+		FString folderPath = FPaths::GetPath(path);
+		while (!folderPath.IsEmpty()) {
+			if (!platformFile.DirectoryExists(*folderPath))
+				platformFile.CreateDirectory(*folderPath);
+			folderPath = FPaths::GetPath(folderPath);
+		}
+
+		return FFileHelper::SaveStringToFile(content, *path);
 	}
 
 	template<typename... Args>
-	static inline FString GetSavePath(const FString& extension, Args... args) {
-		return FPaths::Combine(FPaths::ProjectSavedDir(), AssetsFolder, args...) + extension;
+	inline char* LoadJsonAsset(Args... args) {
+		FString content;
+		if (!FFileHelper::LoadFileToString(content, *GetAssetPath(JsonExtension, args...)))
+			return _strdup("");
+		return _strdup(TCHAR_TO_UTF8(*content));
 	}
 };
-
