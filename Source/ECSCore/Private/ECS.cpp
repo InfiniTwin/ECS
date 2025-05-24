@@ -14,6 +14,9 @@ namespace ECS {
 		if (!FJsonSerializer::Deserialize(reader, rootObject) || !rootObject.IsValid())
 			return;
 
+		auto prevScope = world.get_scope();
+		world.set_scope(flecs::entity());
+
 		// Create singletons
 		const TSharedPtr<FJsonObject>* singletons = nullptr;
 		if (rootObject->TryGetObjectField(SingletonsField, singletons)) {
@@ -26,7 +29,9 @@ namespace ECS {
 			singletonsEntity.from_json(singletonsJson.c_str());
 
 			singletonsEntity.each([&](flecs::id id) {
+				auto idstr = id.str();
 				const ecs_type_info_t* info = ecs_get_type_info(world, id);
+				auto name = info->name;
 				const void* ptr = singletonsEntity.get(id);
 				ecs_set_id(world, world.entity(id), id, info->size, ptr);
 				});
@@ -37,8 +42,6 @@ namespace ECS {
 		// Create entities
 		const TArray<TSharedPtr<FJsonValue>>* entities = nullptr;
 		if (rootObject->TryGetArrayField(EntitiesField, entities)) {
-			auto prevScope = world.get_scope();
-			world.set_scope(flecs::entity());
 			int32 index = 0;
 			for (const TSharedPtr<FJsonValue>& entity : *entities) {
 				FString entityJsonString;
@@ -48,16 +51,15 @@ namespace ECS {
 				world.entity().from_json(entityJson.c_str());
 				index++;
 			}
-			world.set_scope(prevScope);
 		}
+		
+		world.set_scope(prevScope);
 	}
 
 	FString AddScope(const FString& in, const FString& scope) {
 		FString plainPrefix = scope.EndsWith(TEXT(".")) ? scope.LeftChop(1) : scope;
 		const FString dotPrefix = plainPrefix + TEXT(".");
 		FString out = in;
-
-		if (in.Contains(TEXT("\"singletons\"")) && !in.Contains(TEXT("\"entities\""))) return in;
 
 		// Parent
 		int32 cursor = 0;
@@ -165,19 +167,10 @@ namespace ECS {
 		}
 
 		// Components
-		bool skippedSingletons = false;
 		cursor = 0;
 		while (true) {
 			cursor = out.Find(TEXT("\"components\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
 			if (cursor == INDEX_NONE) break;
-			if (!skippedSingletons) {
-				int32 singletonsIndex = out.Find(TEXT("\"singletons\""));
-				if (singletonsIndex != INDEX_NONE && singletonsIndex < cursor) {
-					skippedSingletons = true;
-					cursor += 12;
-					continue;
-				}
-			}
 			int32 open = out.Find(TEXT("{"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
 			if (open == INDEX_NONE) break;
 			int32 depth = 1, i = open + 1;
