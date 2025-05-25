@@ -18,10 +18,10 @@ namespace ECS {
 		world.set_scope(flecs::entity());
 
 		// Create singletons
-		const TSharedPtr<FJsonObject>* singletons = nullptr;
-		if (rootObject->TryGetObjectField(SingletonsField, singletons)) {
+		const TSharedPtr<FJsonObject>* singletonsObject = nullptr;
+		if (rootObject->TryGetObjectField("singletons", singletonsObject)) {
 			FString singletonsJsonString;
-			FJsonSerializer::Serialize(singletons->ToSharedRef(),
+			FJsonSerializer::Serialize(singletonsObject->ToSharedRef(),
 				TJsonWriterFactory<>::Create(&singletonsJsonString));
 			std::string singletonsJson = TCHAR_TO_UTF8(*singletonsJsonString);
 
@@ -29,9 +29,7 @@ namespace ECS {
 			singletonsEntity.from_json(singletonsJson.c_str());
 
 			singletonsEntity.each([&](flecs::id id) {
-				auto idstr = id.str();
 				const ecs_type_info_t* info = ecs_get_type_info(world, id);
-				auto name = info->name;
 				const void* ptr = singletonsEntity.get(id);
 				ecs_set_id(world, world.entity(id), id, info->size, ptr);
 				});
@@ -41,19 +39,51 @@ namespace ECS {
 
 		// Create entities
 		const TArray<TSharedPtr<FJsonValue>>* entities = nullptr;
-		if (rootObject->TryGetArrayField(EntitiesField, entities)) {
-			int32 index = 0;
-			for (const TSharedPtr<FJsonValue>& entity : *entities) {
-				FString entityJsonString;
-				FJsonSerializer::Serialize(entity->AsObject().ToSharedRef(),
-					TJsonWriterFactory<>::Create(&entityJsonString));
-				std::string entityJson = TCHAR_TO_UTF8(*entityJsonString);
-				world.entity().from_json(entityJson.c_str());
-				index++;
+		if (rootObject->TryGetArrayField("entities", entities)) {
+			for (const TSharedPtr<FJsonValue>& entityValue : *entities) {
+				const TSharedPtr<FJsonObject>* entityObject = nullptr;
+				if (entityValue->TryGetObject(entityObject)) {
+					FString entityJsonString;
+					FJsonSerializer::Serialize(entityObject->ToSharedRef(), TJsonWriterFactory<>::Create(&entityJsonString));
+					std::string entityJson = TCHAR_TO_UTF8(*entityJsonString);
+					flecs::entity entity = world.entity();
+					entity.from_json(entityJson.c_str());
+
+					const TArray<TSharedPtr<FJsonValue>>* overrides = nullptr;
+					if ((*entityObject)->TryGetArrayField("overrides", overrides)) {
+						for (const TSharedPtr<FJsonValue>& overrideValue : *overrides) {
+							const TSharedPtr<FJsonObject>* overrideObject = nullptr;
+							if (overrideValue->TryGetObject(overrideObject)) {
+								FString path;
+								if ((*overrideObject)->TryGetStringField("path", path)) {
+									flecs::entity overriden = entity.lookup(TCHAR_TO_UTF8(*path));
+
+									const TSharedPtr<FJsonObject>* componentsObject = nullptr;
+									if ((*overrideObject)->TryGetObjectField("components", componentsObject)) {
+										TSharedPtr<FJsonObject> resultObject = MakeShared<FJsonObject>();
+										resultObject->SetObjectField(TEXT("components"), *componentsObject);
+
+										FString componentsJsonString;
+										FJsonSerializer::Serialize(resultObject.ToSharedRef(), TJsonWriterFactory<>::Create(&componentsJsonString));
+										std::string componentsJson = TCHAR_TO_UTF8(*componentsJsonString);
+
+										auto overrider = world.entity().disable();
+										overrider.from_json(componentsJson.c_str());
+										overrider.each([&](flecs::id id) {
+											const ecs_type_info_t* info = ecs_get_type_info(world, id);
+											const void* ptr = overrider.get(id);
+											ecs_set_id(world, overriden, id, info->size, ptr);
+											});
+									}
+								}
+							}
+						}
+					}
+				}
 			}
+
+			world.set_scope(prevScope);
 		}
-		
-		world.set_scope(prevScope);
 	}
 
 	FString AddScope(const FString& in, const FString& scope) {
@@ -194,6 +224,41 @@ namespace ECS {
 				else i = colon;
 			}
 			cursor = i;
+		}
+
+		// Path entries: Replace "." with "::"
+		cursor = 0;
+		while (true) {
+			cursor = out.Find(TEXT("\"path\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
+			if (cursor == INDEX_NONE) break;
+
+			// Find the colon after "path"
+			int32 colon = out.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+			if (colon == INDEX_NONE) break;
+
+			// Find the starting quote of the value
+			int32 valStart = colon + 1;
+			while (valStart < out.Len() && FChar::IsWhitespace(out[valStart])) ++valStart;
+			if (valStart >= out.Len() || out[valStart] != '"') { cursor = valStart + 1; continue; }
+			++valStart;
+
+			// Find the ending quote of the value
+			int32 valEnd = valStart;
+			while (valEnd < out.Len() && out[valEnd] != '"') {
+				if (out[valEnd] == '\\') ++valEnd; // skip escaped characters
+				++valEnd;
+			}
+
+			FString pathVal = out.Mid(valStart, valEnd - valStart);
+			FString newPathVal = pathVal.Replace(TEXT("."), TEXT("::"));
+
+			if (newPathVal != pathVal) {
+				out = out.Left(valStart) + newPathVal + out.Mid(valEnd);
+				int32 delta = newPathVal.Len() - pathVal.Len();
+				valEnd += delta;
+			}
+
+			cursor = valEnd + 1;
 		}
 
 		return out;
