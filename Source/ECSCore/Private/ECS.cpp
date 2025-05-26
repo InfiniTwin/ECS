@@ -6,155 +6,91 @@ namespace ECS {
 	void FromJsonAsset(flecs::world& world, const FString name, const FString scope) {
 		using namespace Assets;
 		auto data = LoadJsonAsset(name);
-		auto scoped = scope == "" ? data : ECS::AddScope(data, scope);
+		auto scoped = scope == "" ? data : AddScope(data, scope);
 		free(data);
 		TSharedRef<TJsonReader<>> reader = TJsonReaderFactory<>::Create(scoped);
 
-		TSharedPtr<FJsonObject> rootObject;
-		if (!FJsonSerializer::Deserialize(reader, rootObject) || !rootObject.IsValid())
+		TSharedPtr<FJsonObject> root;
+		if (!FJsonSerializer::Deserialize(reader, root) || !root.IsValid())
 			return;
 
 		auto prevScope = world.get_scope();
 		world.set_scope(flecs::entity());
 
-		// Create singletons
-		const TSharedPtr<FJsonObject>* singletonsObject = nullptr;
-		if (rootObject->TryGetObjectField("singletons", singletonsObject)) {
-			FString singletonsJsonString;
-			FJsonSerializer::Serialize(singletonsObject->ToSharedRef(),
-				TJsonWriterFactory<>::Create(&singletonsJsonString));
-			std::string singletonsJson = TCHAR_TO_UTF8(*singletonsJsonString);
+		SingletonsFromJson(world, root);
+		EntitiesFromJson(world, root, scope);
 
-			auto singletonsEntity = world.entity().disable();
-			singletonsEntity.from_json(singletonsJson.c_str());
+		world.set_scope(prevScope);
+	}
+}
 
-			singletonsEntity.each([&](flecs::id id) {
-				const ecs_type_info_t* info = ecs_get_type_info(world, id);
-				const void* ptr = singletonsEntity.get(id);
-				ecs_set_id(world, world.entity(id), id, info->size, ptr);
-				});
+FString ECS::AddScope(const FString& in, const FString& scope) {
+	FString plainPrefix = scope.EndsWith(TEXT(".")) ? scope.LeftChop(1) : scope;
+	const FString dotPrefix = plainPrefix + TEXT(".");
+	FString out = in;
 
-			singletonsEntity.destruct();
-		}
-
-		// Create entities
-		const TArray<TSharedPtr<FJsonValue>>* entities = nullptr;
-		if (rootObject->TryGetArrayField("entities", entities)) {
-			for (const TSharedPtr<FJsonValue>& entityValue : *entities) {
-				const TSharedPtr<FJsonObject>* entityObject = nullptr;
-				if (entityValue->TryGetObject(entityObject)) {
-					FString entityJsonString;
-					FJsonSerializer::Serialize(entityObject->ToSharedRef(), TJsonWriterFactory<>::Create(&entityJsonString));
-					std::string entityJson = TCHAR_TO_UTF8(*entityJsonString);
-					flecs::entity entity = world.entity();
-					entity.from_json(entityJson.c_str());
-
-					const TArray<TSharedPtr<FJsonValue>>* overrides = nullptr;
-					if ((*entityObject)->TryGetArrayField("overrides", overrides)) {
-						for (const TSharedPtr<FJsonValue>& overrideValue : *overrides) {
-							const TSharedPtr<FJsonObject>* overrideObject = nullptr;
-							if (overrideValue->TryGetObject(overrideObject)) {
-								FString path;
-								if ((*overrideObject)->TryGetStringField("path", path)) {
-									flecs::entity overriden = entity.lookup(TCHAR_TO_UTF8(*path));
-
-									const TSharedPtr<FJsonObject>* componentsObject = nullptr;
-									if ((*overrideObject)->TryGetObjectField("components", componentsObject)) {
-										TSharedPtr<FJsonObject> resultObject = MakeShared<FJsonObject>();
-										resultObject->SetObjectField(TEXT("components"), *componentsObject);
-
-										FString componentsJsonString;
-										FJsonSerializer::Serialize(resultObject.ToSharedRef(), TJsonWriterFactory<>::Create(&componentsJsonString));
-										std::string componentsJson = TCHAR_TO_UTF8(*componentsJsonString);
-
-										auto overrider = world.entity().disable();
-										overrider.from_json(componentsJson.c_str());
-										overrider.each([&](flecs::id id) {
-											const ecs_type_info_t* info = ecs_get_type_info(world, id);
-											const void* ptr = overrider.get(id);
-											ecs_set_id(world, overriden, id, info->size, ptr);
-											});
-									}
-								}
-							}
-						}
-					}
-				}
+	// Tags
+	int32 cursor = 0;
+	while (true) {
+		cursor = out.Find(TEXT("\"tags\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
+		if (cursor == INDEX_NONE) break;
+		int32 open = out.Find(TEXT("["), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+		if (open == INDEX_NONE) break;
+		int32 i = open + 1;
+		while (true) {
+			while (i < out.Len() && FChar::IsWhitespace(out[i])) ++i;
+			if (i >= out.Len() || out[i] == ']') { ++i; break; }
+			if (out[i] != '"') { ++i; continue; }
+			int32 start = i + 1, end = start;
+			while (end < out.Len() && out[end] != '"') { if (out[end] == '\\') ++end; ++end; }
+			FString tag = out.Mid(start, end - start);
+			bool scoped = tag.StartsWith(plainPrefix) && (tag.Len() == plainPrefix.Len() || tag.Mid(plainPrefix.Len(), 1) == TEXT("."));
+			bool flecs = tag.StartsWith(TEXT("flecs"));
+			if (!scoped && !flecs) {
+				FString newTag = dotPrefix + tag;
+				out = out.Left(start) + newTag + out.Mid(end);
+				int32 delta = newTag.Len() - tag.Len();
+				end += delta;
+				i = end;
 			}
-
-			world.set_scope(prevScope);
+			else i = end;
+			++i;
 		}
+		cursor = i;
 	}
 
-	FString AddScope(const FString& in, const FString& scope) {
-		FString plainPrefix = scope.EndsWith(TEXT(".")) ? scope.LeftChop(1) : scope;
-		const FString dotPrefix = plainPrefix + TEXT(".");
-		FString out = in;
-
-		// Parent
-		int32 cursor = 0;
-		while (true) {
-			cursor = out.Find(TEXT("\"parent\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
-			if (cursor == INDEX_NONE) break;
-			int32 quote = out.Find(TEXT("\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor + 8);
-			if (quote == INDEX_NONE) break;
-			while (quote < out.Len() && out[quote] != '"') ++quote;
-			if (quote >= out.Len()) break;
-			int32 valStart = quote + 1, valEnd = valStart;
+	// IsA
+	cursor = 0;
+	while (true) {
+		cursor = out.Find(TEXT("\"flecs.core.IsA\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+		if (cursor == INDEX_NONE) break;
+		int32 colon = out.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+		if (colon == INDEX_NONE) break;
+		int32 nextChar = colon + 1;
+		while (nextChar < out.Len() && FChar::IsWhitespace(out[nextChar])) ++nextChar;
+		if (nextChar < out.Len() && out[nextChar] == '"') { // Single IsA entry
+			int32 valStart = nextChar + 1, valEnd = valStart;
 			while (valEnd < out.Len() && out[valEnd] != '"') { if (out[valEnd] == '\\') ++valEnd; ++valEnd; }
+
 			FString val = out.Mid(valStart, valEnd - valStart);
 			bool scoped = val.StartsWith(plainPrefix) && (val.Len() == plainPrefix.Len() || val.Mid(plainPrefix.Len(), 1) == TEXT("."));
-			if (!scoped) {
-				FString newVal = val.IsEmpty() ? plainPrefix : dotPrefix + val;
+			bool flecs = val.StartsWith(TEXT("flecs"));
+			if (!scoped && !flecs) {
+				FString newVal = dotPrefix + val;
 				out = out.Left(valStart) + newVal + out.Mid(valEnd);
 				int32 delta = newVal.Len() - val.Len();
 				valEnd += delta;
-				cursor = valEnd;
 			}
-			else cursor = valEnd;
+			cursor = valEnd + 1;
 		}
-
-		// Tags
-		cursor = 0;
-		while (true) {
-			cursor = out.Find(TEXT("\"tags\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
-			if (cursor == INDEX_NONE) break;
-			int32 open = out.Find(TEXT("["), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
-			if (open == INDEX_NONE) break;
-			int32 i = open + 1;
+		else if (nextChar < out.Len() && out[nextChar] == '[') { // Multiple IsA entries
+			int32 i = nextChar + 1;
 			while (true) {
 				while (i < out.Len() && FChar::IsWhitespace(out[i])) ++i;
 				if (i >= out.Len() || out[i] == ']') { ++i; break; }
 				if (out[i] != '"') { ++i; continue; }
-				int32 start = i + 1, end = start;
-				while (end < out.Len() && out[end] != '"') { if (out[end] == '\\') ++end; ++end; }
-				FString tag = out.Mid(start, end - start);
-				bool scoped = tag.StartsWith(plainPrefix) && (tag.Len() == plainPrefix.Len() || tag.Mid(plainPrefix.Len(), 1) == TEXT("."));
-				bool flecs = tag.StartsWith(TEXT("flecs"));
-				if (!scoped && !flecs) {
-					FString newTag = dotPrefix + tag;
-					out = out.Left(start) + newTag + out.Mid(end);
-					int32 delta = newTag.Len() - tag.Len();
-					end += delta;
-					i = end;
-				}
-				else i = end;
-				++i;
-			}
-			cursor = i;
-		}
 
-		// IsA
-		cursor = 0;
-		while (true) {
-			cursor = out.Find(TEXT("\"flecs.core.IsA\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
-			if (cursor == INDEX_NONE) break;
-			int32 colon = out.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
-			if (colon == INDEX_NONE) break;
-			int32 nextChar = colon + 1;
-			while (nextChar < out.Len() && FChar::IsWhitespace(out[nextChar])) ++nextChar;
-			if (nextChar < out.Len() && out[nextChar] == '"') { // Single IsA entry
-				int32 valStart = nextChar + 1, valEnd = valStart;
+				int32 valStart = i + 1, valEnd = valStart;
 				while (valEnd < out.Len() && out[valEnd] != '"') { if (out[valEnd] == '\\') ++valEnd; ++valEnd; }
 
 				FString val = out.Mid(valStart, valEnd - valStart);
@@ -165,102 +101,80 @@ namespace ECS {
 					out = out.Left(valStart) + newVal + out.Mid(valEnd);
 					int32 delta = newVal.Len() - val.Len();
 					valEnd += delta;
+					i = valEnd;
 				}
-				cursor = valEnd + 1;
-			}
-			else if (nextChar < out.Len() && out[nextChar] == '[') { // Multiple IsA entries
-				int32 i = nextChar + 1;
-				while (true) {
-					while (i < out.Len() && FChar::IsWhitespace(out[i])) ++i;
-					if (i >= out.Len() || out[i] == ']') { ++i; break; }
-					if (out[i] != '"') { ++i; continue; }
-
-					int32 valStart = i + 1, valEnd = valStart;
-					while (valEnd < out.Len() && out[valEnd] != '"') { if (out[valEnd] == '\\') ++valEnd; ++valEnd; }
-
-					FString val = out.Mid(valStart, valEnd - valStart);
-					bool scoped = val.StartsWith(plainPrefix) && (val.Len() == plainPrefix.Len() || val.Mid(plainPrefix.Len(), 1) == TEXT("."));
-					bool flecs = val.StartsWith(TEXT("flecs"));
-					if (!scoped && !flecs) {
-						FString newVal = dotPrefix + val;
-						out = out.Left(valStart) + newVal + out.Mid(valEnd);
-						int32 delta = newVal.Len() - val.Len();
-						valEnd += delta;
-						i = valEnd;
-					}
-					else i = valEnd;
-					++i;
-				}
-				cursor = i;
-			}
-			else cursor = nextChar + 1;
-		}
-
-		// Components
-		cursor = 0;
-		while (true) {
-			cursor = out.Find(TEXT("\"components\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
-			if (cursor == INDEX_NONE) break;
-			int32 open = out.Find(TEXT("{"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
-			if (open == INDEX_NONE) break;
-			int32 depth = 1, i = open + 1;
-			for (; i < out.Len() && depth > 0; ++i) {
-				if (out[i] == '{') ++depth; else if (out[i] == '}') --depth;
-				if (depth != 1) continue;
-				if (FChar::IsWhitespace(out[i]) || out[i] != '"') continue;
-				int32 start = i + 1, end = start;
-				while (end < out.Len() && out[end] != '"') { if (out[end] == '\\') ++end; ++end; }
-				FString key = out.Mid(start, end - start);
-				int32 colon = out.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, end);
-				if (colon == INDEX_NONE) break;
-				bool scoped = key.StartsWith(plainPrefix) && (key.Len() == plainPrefix.Len() || key.Mid(plainPrefix.Len(), 1) == TEXT("."));
-				if (!scoped) {
-					FString newKey = dotPrefix + key;
-					out = out.Left(start) + newKey + out.Mid(end);
-					int32 delta = newKey.Len() - key.Len();
-					end += delta;
-					i = colon + delta;
-				}
-				else i = colon;
+				else i = valEnd;
+				++i;
 			}
 			cursor = i;
 		}
+		else cursor = nextChar + 1;
+	}
 
-		// Path entries: Replace "." with "::"
-		cursor = 0;
-		while (true) {
-			cursor = out.Find(TEXT("\"path\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
-			if (cursor == INDEX_NONE) break;
-
-			// Find the colon after "path"
-			int32 colon = out.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+	// Components
+	cursor = 0;
+	while (true) {
+		cursor = out.Find(TEXT("\"components\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
+		if (cursor == INDEX_NONE) break;
+		int32 open = out.Find(TEXT("{"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+		if (open == INDEX_NONE) break;
+		int32 depth = 1, i = open + 1;
+		for (; i < out.Len() && depth > 0; ++i) {
+			if (out[i] == '{') ++depth; else if (out[i] == '}') --depth;
+			if (depth != 1) continue;
+			if (FChar::IsWhitespace(out[i]) || out[i] != '"') continue;
+			int32 start = i + 1, end = start;
+			while (end < out.Len() && out[end] != '"') { if (out[end] == '\\') ++end; ++end; }
+			FString key = out.Mid(start, end - start);
+			int32 colon = out.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, end);
 			if (colon == INDEX_NONE) break;
-
-			// Find the starting quote of the value
-			int32 valStart = colon + 1;
-			while (valStart < out.Len() && FChar::IsWhitespace(out[valStart])) ++valStart;
-			if (valStart >= out.Len() || out[valStart] != '"') { cursor = valStart + 1; continue; }
-			++valStart;
-
-			// Find the ending quote of the value
-			int32 valEnd = valStart;
-			while (valEnd < out.Len() && out[valEnd] != '"') {
-				if (out[valEnd] == '\\') ++valEnd; // skip escaped characters
-				++valEnd;
+			bool scoped = key.StartsWith(plainPrefix) && (key.Len() == plainPrefix.Len() || key.Mid(plainPrefix.Len(), 1) == TEXT("."));
+			if (!scoped) {
+				FString newKey = dotPrefix + key;
+				out = out.Left(start) + newKey + out.Mid(end);
+				int32 delta = newKey.Len() - key.Len();
+				end += delta;
+				i = colon + delta;
 			}
+			else i = colon;
+		}
+		cursor = i;
+	}
 
-			FString pathVal = out.Mid(valStart, valEnd - valStart);
-			FString newPathVal = pathVal.Replace(TEXT("."), TEXT("::"));
+	// Path entries: Replace "." with "::"
+	cursor = 0;
+	while (true) {
+		cursor = out.Find(TEXT("\"path\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
+		if (cursor == INDEX_NONE) break;
 
-			if (newPathVal != pathVal) {
-				out = out.Left(valStart) + newPathVal + out.Mid(valEnd);
-				int32 delta = newPathVal.Len() - pathVal.Len();
-				valEnd += delta;
-			}
+		// Find the colon after "path"
+		int32 colon = out.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+		if (colon == INDEX_NONE) break;
 
-			cursor = valEnd + 1;
+		// Find the starting quote of the value
+		int32 valStart = colon + 1;
+		while (valStart < out.Len() && FChar::IsWhitespace(out[valStart])) ++valStart;
+		if (valStart >= out.Len() || out[valStart] != '"') { cursor = valStart + 1; continue; }
+		++valStart;
+
+		// Find the ending quote of the value
+		int32 valEnd = valStart;
+		while (valEnd < out.Len() && out[valEnd] != '"') {
+			if (out[valEnd] == '\\') ++valEnd; // skip escaped characters
+			++valEnd;
 		}
 
-		return out;
+		FString pathVal = out.Mid(valStart, valEnd - valStart);
+		FString newPathVal = pathVal.Replace(TEXT("."), TEXT("::"));
+
+		if (newPathVal != pathVal) {
+			out = out.Left(valStart) + newPathVal + out.Mid(valEnd);
+			int32 delta = newPathVal.Len() - pathVal.Len();
+			valEnd += delta;
+		}
+
+		cursor = valEnd + 1;
 	}
+
+	return out;
 }
