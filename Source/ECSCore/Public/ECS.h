@@ -23,11 +23,11 @@ namespace ECS {
 
 	FString AddScope(const FString& in, const FString& scope = TEXT(""));
 
-	static inline void EntitiesFromJson(flecs::world& world, TSharedPtr<FJsonObject>& root, const FString path);
-	static inline void OverridesFromJson(flecs::world& world, flecs::entity entity, TSharedPtr<FJsonObject> entityObject);
+	static inline void EntitiesFromJson(flecs::world& world, const TSharedPtr<FJsonObject>& root, const FString path);
+	static inline void OverridesFromJson(flecs::world& world, const flecs::entity entity, const TSharedPtr<FJsonObject> entityObject);
 	static inline void ChildrenFromJson(flecs::world& world, const TSharedPtr<FJsonObject>& entityObject, const FString& parentPath, const flecs::string_view& parentName);
 
-	static inline void GetInstances(flecs::world& world, flecs::entity prefab, TArray<flecs::entity>& instances)
+	static inline void GetInstances(flecs::world& world, const flecs::entity prefab, TArray<flecs::entity>& instances)
 	{
 		TQueue<flecs::entity> queue;
 		queue.Enqueue(prefab);
@@ -98,7 +98,7 @@ namespace ECS {
 			}
 	}
 
-	static inline void OverridesFromJson(flecs::world& world, flecs::entity entity, TSharedPtr<FJsonObject> entityObject) {
+	static inline void OverridesFromJson(flecs::world& world, const flecs::entity entity, const TSharedPtr<FJsonObject> entityObject) {
 		const TArray<TSharedPtr<FJsonValue>>* overrides = nullptr;
 		if (entityObject->TryGetArrayField("overrides", overrides))
 			for (const TSharedPtr<FJsonValue>& overrideValue : *overrides) {
