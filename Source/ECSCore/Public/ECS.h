@@ -123,6 +123,8 @@ namespace ECS {
 								const void* ptr = overrider.get(id);
 								ecs_set_id(world, overriden, id, info->size, ptr);
 								});
+
+							overrider.destruct();
 						}
 					}
 				}
