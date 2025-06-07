@@ -3,24 +3,28 @@
 #include "ECS.h"
 
 namespace ECS {
-	void FromJsonAsset(flecs::world& world, const FString name, const FString scope) {
+	void FromJsonAsset(flecs::world& world, const FString& path, const FString& scope, const FString& parent, LoadMode mode) {
 		using namespace Assets;
-		auto data = LoadJsonAsset(name);
-		auto scoped = scope == "" ? data : AddScope(data, scope);
+		auto data = LoadJsonAsset(path);
+		FString processedJson = (mode == LoadMode::Destroy)
+			? data
+			: AddScope(data, scope);
 		free(data);
-		TSharedRef<TJsonReader<>> reader = TJsonReaderFactory<>::Create(scoped);
 
+		TSharedRef<TJsonReader<>> reader = TJsonReaderFactory<>::Create(processedJson);
 		TSharedPtr<FJsonObject> root;
 		if (!FJsonSerializer::Deserialize(reader, root) || !root.IsValid())
 			return;
 
-		auto prevScope = world.get_scope();
+		auto previousScope = world.get_scope();
 		world.set_scope(flecs::entity());
 
-		SingletonsFromJson(world, root);
-		EntitiesFromJson(world, root, scope);
+		if (mode != LoadMode::Destroy)
+			SingletonsFromJson(world, root);
 
-		world.set_scope(prevScope);
+		EntitiesFromJson(world, root, parent.IsEmpty() ? scope : parent, mode);
+
+		world.set_scope(previousScope);
 	}
 }
 
@@ -174,6 +178,84 @@ FString ECS::AddScope(const FString& in, const FString& scope) {
 		}
 
 		cursor = valEnd + 1;
+	}
+
+	// Pairs
+	cursor = 0;
+	while (true) {
+		cursor = out.Find(TEXT("\"pairs\""), ESearchCase::IgnoreCase, ESearchDir::FromStart, cursor);
+		if (cursor == INDEX_NONE) break;
+
+		// Find opening {
+		int32 open = out.Find(TEXT("{"), ESearchCase::CaseSensitive, ESearchDir::FromStart, cursor);
+		if (open == INDEX_NONE) break;
+
+		// Match the full {} block
+		int32 depth = 1, i = open + 1;
+		while (i < out.Len() && depth > 0) {
+			if (out[i] == '{') depth++;
+			else if (out[i] == '}') depth--;
+			i++;
+		}
+		if (depth != 0) break;
+
+		// Extract block
+		int32 close = i - 1;
+		FString block = out.Mid(open, close - open + 1);
+
+		// Parse each "key": "value" entry inside the block
+		FString updatedBlock = block;
+		int32 innerPos = 0;
+		while (true) {
+			int32 keyStart = updatedBlock.Find(TEXT("\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, innerPos);
+			if (keyStart == INDEX_NONE) break;
+			int32 keyEnd = updatedBlock.Find(TEXT("\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, keyStart + 1);
+			if (keyEnd == INDEX_NONE) break;
+
+			FString key = updatedBlock.Mid(keyStart + 1, keyEnd - keyStart - 1);
+			int32 colon = updatedBlock.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, keyEnd);
+			if (colon == INDEX_NONE) break;
+
+			// Find value
+			int32 valStart = colon + 1;
+			while (valStart < updatedBlock.Len() && FChar::IsWhitespace(updatedBlock[valStart])) valStart++;
+			if (valStart >= updatedBlock.Len()) break;
+
+			if (updatedBlock[valStart] == '"') {
+				int32 valEnd = updatedBlock.Find(TEXT("\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, valStart + 1);
+				if (valEnd == INDEX_NONE) break;
+
+				FString val = updatedBlock.Mid(valStart + 1, valEnd - valStart - 1);
+
+				// Update key if needed
+				if (!key.StartsWith(TEXT("flecs")) && !key.StartsWith(dotPrefix)) {
+					FString newKey = dotPrefix + key;
+					updatedBlock = updatedBlock.Left(keyStart + 1) + newKey + updatedBlock.Mid(keyEnd);
+					int32 delta = newKey.Len() - key.Len();
+					keyEnd += delta;
+					colon += delta;
+					valStart += delta;
+					valEnd += delta;
+				}
+
+				// Update value if needed
+				if (!val.StartsWith(TEXT("flecs")) && !val.StartsWith(dotPrefix)) {
+					FString newVal = dotPrefix + val;
+					updatedBlock = updatedBlock.Left(valStart + 1) + newVal + updatedBlock.Mid(valEnd);
+					int32 delta = newVal.Len() - val.Len();
+					valEnd += delta;
+				}
+				innerPos = valEnd + 1;
+			}
+			else {
+				// Handle non-string values if needed (e.g., numbers)
+				innerPos = valStart + 1;
+			}
+		}
+
+		// Replace original block with updated block
+		out = out.Left(open) + updatedBlock + out.Mid(close + 1);
+		cursor = open + updatedBlock.Len();
 	}
 
 	return out;

@@ -1,9 +1,10 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include <flecs.h>
 #include "Assets.h"
+#include <optional>
 
 namespace ECS {
 #define COMPONENT(T) ([] { return #T; }())
@@ -19,9 +20,31 @@ namespace ECS {
 
 	constexpr const char* VALUE = "Value";
 
-	ECSCORE_API void FromJsonAsset(flecs::world& world, const FString name, const FString scope = TEXT(""));
+	enum LoadMode {
+		Create,
+		Edit,
+		Destroy
+	};
+
+	ECSCORE_API void FromJsonAsset(flecs::world& world, const FString& path, const FString& scope, const FString& parent = TEXT(""), LoadMode mode = LoadMode::Create);
 
 	FString AddScope(const FString& in, const FString& scope = TEXT(""));
+
+	static inline FString FullPath(const FString& path) {
+		FString result = path;
+		result.ReplaceInline(TEXT("."), TEXT("::")); // Replace '.' with '::'		
+		if (!result.StartsWith(TEXT("::")))  // Prepend '::' if not already present
+			result = TEXT("::") + result;
+		return result;
+	}
+
+	static inline FString NormalizedPath(const FString& path) {
+		FString result = path;
+		if (result.StartsWith(TEXT("::"))) // Remove leading "::" if present
+			result.RightChopInline(2);
+		result.ReplaceInline(TEXT("::"), TEXT(".")); // Replace all "::" with "."
+		return result;
+	}
 
 	static inline void GetInstances(flecs::world& world, const flecs::entity prefab, TArray<flecs::entity>& instances)
 	{
@@ -47,6 +70,31 @@ namespace ECS {
 		}
 	}
 
+	static inline void OverrideComponents(flecs::world& world, const TSharedPtr<FJsonObject>* root, std::optional<flecs::entity> overriden = std::nullopt)
+	{
+		const TSharedPtr<FJsonObject>* componentsObject = nullptr;
+		if ((*root)->TryGetObjectField("components", componentsObject)) {
+			for (const auto& pair : (*componentsObject)->Values) {
+				const FString& name = pair.Key;
+				const TSharedPtr<FJsonObject> data = pair.Value->AsObject();
+
+				FString jsonString;
+				TSharedRef<TJsonWriter<>> writer = TJsonWriterFactory<>::Create(&jsonString);
+				FJsonSerializer::Serialize(data.ToSharedRef(), writer);
+				writer->Close();
+
+				std::string json = TCHAR_TO_UTF8(*jsonString);
+				std::string fullName = TCHAR_TO_UTF8(*FullPath(name));
+				flecs::id id = world.lookup(fullName.c_str());
+
+				if (overriden.has_value()) // Override entity
+					overriden.value().set_json(id, json.c_str());
+				else // Override singleton
+					world.entity(id).set_json(id, json.c_str());
+			}
+		}
+	}
+
 	static inline void SingletonsFromJson(flecs::world& world, TSharedPtr<FJsonObject>& root)
 	{
 		const TSharedPtr<FJsonObject>* singletonsObject = nullptr;
@@ -55,74 +103,60 @@ namespace ECS {
 			FJsonSerializer::Serialize(singletonsObject->ToSharedRef(),
 				TJsonWriterFactory<>::Create(&singletonsJsonString));
 			std::string singletonsJson = TCHAR_TO_UTF8(*singletonsJsonString);
-
-			auto singletonsEntity = world.entity().disable();
-			singletonsEntity.from_json(singletonsJson.c_str());
-
-			singletonsEntity.each([&](flecs::id id) {
-				const ecs_type_info_t* info = ecs_get_type_info(world, id);
-				const void* ptr = singletonsEntity.get(id);
-				ecs_set_id(world, world.entity(id), id, info->size, ptr);
-				});
-
-			singletonsEntity.destruct();
+			OverrideComponents(world, singletonsObject);
 		}
 	}
 
-	static inline void OverridesFromJson(flecs::world& world, const flecs::entity entity, const TSharedPtr<FJsonObject> entityObject) {
+	static inline void Override(flecs::world& world, const flecs::entity entity, const TSharedPtr<FJsonObject> entityObject) {
 		const TArray<TSharedPtr<FJsonValue>>* overrides = nullptr;
 		if (entityObject->TryGetArrayField("overrides", overrides))
 			for (const TSharedPtr<FJsonValue>& overrideValue : *overrides) {
-				const TSharedPtr<FJsonObject>* overrideObject = nullptr;
-				if (overrideValue->TryGetObject(overrideObject)) {
+				const TSharedPtr<FJsonObject>* overridesObject = nullptr;
+				if (overrideValue->TryGetObject(overridesObject)) {
 					FString path;
-					if ((*overrideObject)->TryGetStringField("path", path)) {
-						const TSharedPtr<FJsonObject>* componentsObject = nullptr;
-						if ((*overrideObject)->TryGetObjectField("components", componentsObject)) {
-							TSharedPtr<FJsonObject> resultObject = MakeShared<FJsonObject>();
-							resultObject->SetObjectField(TEXT("components"), *componentsObject);
-
-							FString componentsJsonString;
-							FJsonSerializer::Serialize(resultObject.ToSharedRef(), TJsonWriterFactory<>::Create(&componentsJsonString));
-							std::string componentsJson = TCHAR_TO_UTF8(*componentsJsonString);
-
-							auto overrider = world.entity().disable();
-							overrider.from_json(componentsJson.c_str());
-							flecs::entity overriden = entity.lookup(TCHAR_TO_UTF8(*path));
-							overrider.each([&](flecs::id id) {
-								const ecs_type_info_t* info = ecs_get_type_info(world, id);
-								const void* ptr = overrider.get(id);
-								ecs_set_id(world, overriden, id, info->size, ptr);
-								});
-
-							overrider.destruct();
-						}
-					}
+					if ((*overridesObject)->TryGetStringField("path", path))
+						OverrideComponents(world, overridesObject, entity.lookup(TCHAR_TO_UTF8(*path)));
 				}
 			}
 	}
 
-	static inline void EntitiesFromJson(flecs::world& world, TSharedPtr<FJsonObject>& root, const FString path) {
+	static inline void EntitiesFromJson(flecs::world& world, TSharedPtr<FJsonObject>& root, const FString& parent, LoadMode mode) {
 		const TArray<TSharedPtr<FJsonValue>>* entities = nullptr;
 		if (root->TryGetArrayField("entities", entities))
 			for (const TSharedPtr<FJsonValue>& entityValue : *entities) {
 				const TSharedPtr<FJsonObject>* entityObject = nullptr;
 				if (entityValue->TryGetObject(entityObject)) {
-					// Prepend "parent" field
 					TSharedPtr<FJsonObject> modifiedEntityObject = MakeShared<FJsonObject>();
-					modifiedEntityObject->SetStringField(TEXT("parent"), path);
+					modifiedEntityObject->SetStringField(TEXT("parent"), parent); // Prepend "parent" field
 					for (const auto& kvp : (*entityObject)->Values)
 						modifiedEntityObject->SetField(kvp.Key, kvp.Value);
 
-					FString entityJsonString;
-					FJsonSerializer::Serialize(modifiedEntityObject.ToSharedRef(), TJsonWriterFactory<>::Create(&entityJsonString));
-					std::string entityJson = TCHAR_TO_UTF8(*entityJsonString);
+					auto name = (*entityObject)->GetStringField("name");
+					auto entityPath = (parent + (name.IsEmpty() ? "" : TEXT(".") + name));
 
-					flecs::entity entity = world.entity();
-					entity.from_json(entityJson.c_str());
+					flecs::entity entity;
+					if (mode == LoadMode::Create)
+					{
+						entity = world.entity();
+						FString entityJsonString;
+						FJsonSerializer::Serialize(modifiedEntityObject.ToSharedRef(), TJsonWriterFactory<>::Create(&entityJsonString));
+						std::string entityJson = TCHAR_TO_UTF8(*entityJsonString);
+						entity.from_json(entityJson.c_str());
+					}
+					else
+					{
+						entity = world.lookup(TCHAR_TO_UTF8(*FullPath(entityPath)));
+						if (!entity.is_valid())
+						{
+							UE_LOG(LogTemp, Error, TEXT("Entity not found: %s"), *FString(entityPath));
+							continue;
+						}
+						if (mode == LoadMode::Destroy)
+							entity.destruct();
+					}
 
-					OverridesFromJson(world, entity, *entityObject);
-					EntitiesFromJson(world, modifiedEntityObject, path + TEXT(".") + UTF8_TO_TCHAR(entity.name().c_str()));
+					Override(world, entity, *entityObject);
+					EntitiesFromJson(world, modifiedEntityObject, entityPath, mode);
 				}
 			}
 	}
