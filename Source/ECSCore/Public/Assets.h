@@ -8,6 +8,7 @@
 
 inline constexpr TCHAR AssetsFolder[] = TEXT("Assets");
 inline constexpr TCHAR JsonExtension[] = TEXT(".json");
+inline constexpr TCHAR FlecsExtension[] = TEXT(".flecs");
 inline constexpr TCHAR TextExtension[] = TEXT(".txt");
 
 namespace Assets {
@@ -54,10 +55,20 @@ namespace Assets {
 	}
 
 	template<typename... Args>
-	inline char* LoadJsonAsset(Args... args) {
+	inline char* LoadTextAsset(const FString& extension, Args... args) {
 		FString content;
-		if (!FFileHelper::LoadFileToString(content, *GetAssetPath(JsonExtension, args...)))
+		if (!FFileHelper::LoadFileToString(content, *GetAssetPath(extension, args...)))
 			return _strdup("");
 		return _strdup(TCHAR_TO_UTF8(*content));
+	}
+
+	template<typename... Args>
+	inline char* LoadJsonAsset(Args... args) {
+		return LoadTextAsset(JsonExtension, args...);
+	}
+
+	template<typename... Args>
+	inline char* LoadFlecsAsset(Args... args) {
+		return LoadTextAsset(FlecsExtension, args...);
 	}
 };
