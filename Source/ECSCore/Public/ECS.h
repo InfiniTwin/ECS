@@ -20,22 +20,17 @@ namespace ECS {
 
 	constexpr const char* VALUE = "Value";
 
-	enum LoadMode {
-		Create,
-		Edit,
-		Destroy
-	};
+	ECSCORE_API extern TMap<FString, FString> Scopes;
 
-	ECSCORE_API void RunScript(
-		flecs::world& world,
-		const FString& path,
-		const FString& scope,
-		const FString& parent = TEXT(""),
-		LoadMode mode = LoadMode::Create,
-		bool invert = false);
+	ECSCORE_API void RunScript(flecs::world& world, const FString& path);
 
-	static inline FString SetScope(const FString& data, const FString& scope) {
-		return data.Replace(TEXT("[SCOPE]"), *scope, ESearchCase::CaseSensitive);
+	void RegisterOpaqueTypes(flecs::world& world);
+
+	static inline FString SetScopes(const FString& data) {
+		FString result = data;
+		for (const auto& Pair : Scopes)
+			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
+		return result;
 	}
 
 	static inline FString FullPath(const FString& path) {
