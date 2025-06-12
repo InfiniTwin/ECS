@@ -8,10 +8,9 @@ namespace ECS {
 	void RunScript(flecs::world& world, const FString& path) {
 		using namespace Assets;
 		char* data = LoadFlecsAsset(path);
-		FString scopedData = SetScopes(data);
+		FString code = UTF8_TO_TCHAR(data);
 		free(data);
-		if (ecs_script_run(world, TCHAR_TO_ANSI(*path), TCHAR_TO_UTF8(*scopedData)))
-			UE_LOG(LogTemp, Error, TEXT(">>> Error Running Flecs Script: %s"), *path);
+		RunScript(world, path, code);
 	}
 
 	void RegisterOpaqueTypes(flecs::world& world) {

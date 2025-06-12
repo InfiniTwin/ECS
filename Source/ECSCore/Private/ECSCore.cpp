@@ -24,5 +24,6 @@ namespace ECS {
 
 		ActionFeature::RegisterComponents(world);
 		ActionFeature::CreateObservers(world);
+		ActionFeature::CreateSystems(world);
 	}
 }
