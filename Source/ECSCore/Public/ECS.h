@@ -20,11 +20,11 @@ namespace ECS {
 
 	constexpr const char* VALUE = "Value";
 
-	ECSCORE_API extern TMap<FString, FString> Scopes;
+	ECSCORE_API extern TMap<FString, FString> Tokens;
 
 	static inline FString SetScopes(const FString& data) {
 		FString result = data;
-		for (const auto& Pair : Scopes)
+		for (const auto& Pair : Tokens)
 			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
 		return result;
 	}
@@ -71,14 +71,6 @@ namespace ECS {
 		result.ReplaceInline(TEXT("."), TEXT("::"));
 		if (!result.StartsWith(TEXT("::")))
 			result = TEXT("::") + result;
-		return result;
-	}
-
-	static inline FString NormalizedPath(const FString& path) {
-		FString result = path;
-		if (result.StartsWith(TEXT("::")))
-			result.RightChopInline(2);
-		result.ReplaceInline(TEXT("::"), TEXT("."));
 		return result;
 	}
 

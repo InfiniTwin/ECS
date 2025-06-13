@@ -18,7 +18,8 @@ namespace ECS {
 	Core::Core(flecs::world& world) {
 		world.module<Core>();
 
-		Scopes.Add(TEXT("[CORE]"), ECSCoreScope);
+		ECS::Tokens.Add(TEXT("[IsA]"), IsARelationship);
+		ECS::Tokens.Add(TEXT("[CORE]"), ECSCoreScope);
 
 		ECS::RegisterOpaqueTypes(world);
 

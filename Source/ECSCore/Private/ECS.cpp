@@ -3,7 +3,7 @@
 #include "ECS.h"
 
 namespace ECS {
-	TMap<FString, FString> Scopes;
+	TMap<FString, FString> Tokens;
 
 	void RunScript(flecs::world& world, const FString& path) {
 		using namespace Assets;

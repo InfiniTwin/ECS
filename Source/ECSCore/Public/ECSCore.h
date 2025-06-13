@@ -15,6 +15,7 @@ public:
 };
 
 namespace ECS {
+	inline constexpr TCHAR IsARelationship[] = TEXT("flecs.core.IsA");
 	inline constexpr TCHAR ECSCoreScope[] = TEXT("ECS.Core");
 
 	struct Core {

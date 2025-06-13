@@ -14,12 +14,18 @@ namespace ECS {
 
 	struct Action {};
 	struct Invert {};
-	struct Path { FString Value; };
-	struct Parent { FString Value; };
+	enum Operation {
+		Add,
+		Remove
+	};
 
-	struct Data { FString Value; };
+	struct Target { FString Value; };
+	struct Code { FString Value; };
 
-	struct SetSingletons {};
+	struct Singletons {};
+	struct Tags {};
+	struct Components {};
+	struct Pairs {};
 
 	void ReplaceAll(std::string& str, const std::string& from, const std::string& to) {
 		size_t start_pos = 0;
@@ -29,15 +35,54 @@ namespace ECS {
 		}
 	}
 
-	static inline void UpdateSingletons(flecs::world& world, const FString& data)
+	static inline TMap<FString, FString> GetPairs(const FString& input)
+	{
+		TMap<FString, FString> result;
+
+		TArray<FString> pairs;
+		input.ParseIntoArray(pairs, TEXT(";"), true);
+
+		for (const FString& pair : pairs)
+		{
+			FString key, value;
+			if (pair.Split(TEXT(","), &key, &value))
+			{
+				value = value.TrimQuotes();
+				result.Add(key, value);
+			}
+		}
+
+		return result;
+	}
+
+	static inline void SetSingletons(flecs::world& world, const FString& data)
 	{
 		FString code = data;
-		code.ReplaceInline(TEXT("\\n"), TEXT("\n")); 
+		code.ReplaceInline(TEXT("\\n"), TEXT("\n"));
 		code.ReplaceInline(TEXT("$"), TEXT("$ {\n\t"));
 		code.ReplaceInline(TEXT(";"), TEXT("}\n\t"));
 		code.ReplaceInline(TEXT(","), TEXT(": {"));
 		code += TEXT("}\n}");
-	
+
 		RunScript(world, "Set Singletons", code);
+	}
+
+	static inline void UpdatePairs(flecs::world& world, flecs::entity action, bool add)
+	{
+		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*action.get<Target>()->Value));
+
+		for (const TPair<FString, FString>& pair : GetPairs(action.get<Code>()->Value))
+		{
+			auto key = TCHAR_TO_UTF8(*FullPath(pair.Key));
+			auto value = TCHAR_TO_UTF8(*FullPath(pair.Value));
+
+			auto first = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Key))).id();
+			auto second = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Value))).id();
+
+			if (add)
+				ecs_add_pair(world, target, first, second);
+			else
+				ecs_remove_pair(world, target, first, second);
+		}
 	}
 }
