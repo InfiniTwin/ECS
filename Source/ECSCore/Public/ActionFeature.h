@@ -73,9 +73,6 @@ namespace ECS {
 
 		for (const TPair<FString, FString>& pair : GetPairs(action.get<Code>()->Value))
 		{
-			auto key = TCHAR_TO_UTF8(*FullPath(pair.Key));
-			auto value = TCHAR_TO_UTF8(*FullPath(pair.Value));
-
 			auto first = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Key))).id();
 			auto second = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Value))).id();
 

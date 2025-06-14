@@ -34,16 +34,14 @@ namespace ECS {
 	}
 
 	void ActionFeature::CreateSystems(flecs::world& world) {
-		world.observer<>("SetActionTarget")
-			.with<Action>()
+		world.observer<Target>("SetActionTarget")
 			.event(flecs::OnSet)
-			.each([](flecs::entity action) {
+			.each([](flecs::entity action, Target target) {
 			FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
-			FString target = action.get<Target>()->Value;
-			if (!target.IsEmpty())
-				path += TEXT(".") + target;
+			if (!target.Value.IsEmpty())
+				path += TEXT("::") + target.Value;
 			using namespace ECS;
-			action.set<Target>({ path });
+			action.get_mut<Target>()->Value = FullPath(path);
 				});
 
 		world.system<>("TriggerAction")
