@@ -20,17 +20,6 @@ namespace ECS {
 
 	constexpr const char* VALUE = "Value";
 
-	ECSCORE_API extern TMap<FString, FString> Tokens;
-
-	static inline FString SetScopes(const FString& data) {
-		FString result = data;
-		for (const auto& Pair : Tokens)
-			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
-		return result;
-	}
-
-	ECSCORE_API void RunScript(flecs::world& world, const FString& path);
-
 	template <typename Element, typename Vector = std::vector<Element>>
 	flecs::opaque<Vector, Element> VectorReflection(flecs::world& world) {
 		std::stringstream ss;
@@ -50,7 +39,6 @@ namespace ECS {
 			.resize([](Vector* data, size_t size) {
 			data->resize(size);
 				})
-			// Ensure element exists, return pointer
 			.ensure_element([](Vector* data, size_t elem) {
 			if (data->size() <= elem)
 				data->resize(elem + 1);
@@ -59,6 +47,17 @@ namespace ECS {
 	}
 
 	void RegisterOpaqueTypes(flecs::world& world);
+
+	ECSCORE_API extern TMap<FString, FString> Tokens;
+
+	static inline FString SetScopes(const FString& data) {
+		FString result = data;
+		for (const auto& Pair : Tokens)
+			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
+		return result;
+	}
+
+	ECSCORE_API void RunScript(flecs::world& world, const FString& path);
 
 	static inline void RunScript(flecs::world& world, const FString& name, const FString& code) {
 		FString scopedCode = SetScopes(code);
@@ -99,4 +98,13 @@ namespace ECS {
 				});
 		}
 	}
+
+	static inline flecs::entity FirstChild(const flecs::entity& parent) {
+		flecs::entity result{};
+		parent.children([&](flecs::entity child) {
+			result = child;
+			});
+		return result;
+	}
+
 }
