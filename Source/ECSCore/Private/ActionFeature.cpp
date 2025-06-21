@@ -3,7 +3,6 @@
 #include "ActionFeature.h"
 #include "flecs.h"
 #include "ECS.h"
-#include "Logging/LogMacros.h"
 
 namespace ECS {
 	void ActionFeature::RegisterComponents(flecs::world& world) {
