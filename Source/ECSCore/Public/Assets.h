@@ -27,13 +27,13 @@ namespace Assets {
 	}
 
 	template<typename... Args>
-	inline std::vector<FString> GetFolders(const FString& path) {
-		std::vector<FString> folders;
+	inline TArray<FString> GetFolders(const FString& path) {
+		TArray<FString> folders;
 		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
 
 		platformFile.IterateDirectoryStat(*path, [&folders](const TCHAR* child, const FFileStatData& stat) -> bool {
 			if (stat.bIsDirectory)
-				folders.push_back(*FPaths::GetCleanFilename(child));
+				folders.Add(*FPaths::GetCleanFilename(child));
 			return true;
 			});
 

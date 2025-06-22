@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "ECS.h"
+#include "Assets.h"
 
 namespace ECS {
 	TMap<FString, FString> Tokens;
