@@ -35,36 +35,29 @@ namespace ECS {
 	void ActionFeature::CreateSystems(flecs::world& world) {
 		world.observer<Target>("SetActionTarget")
 			.event(flecs::OnSet)
-			.each([](flecs::entity action, Target target) {
+			.each([](flecs::entity action, Target& target) {
 			FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
 			if (!target.Value.IsEmpty())
 				path += TEXT("::") + target.Value;
-			using namespace ECS;
-			action.get_mut<Target>()->Value = FullPath(path);
+			target.Value = ECS::FullPath(path);
 				});
 
 		world.system<>("TriggerAction")
 			.with<Operation>().second(flecs::Wildcard)
 			.with<Action>().id_flags(flecs::TOGGLE).with<Action>()
-			.each([&world](flecs::entity entity) {
-			entity.disable<Action>();
-			bool add = entity.has(Operation::Add);
-
-			//if (entity.has<Singletons>())
-			//	SetSingletons(world, code.Value);
-			if (entity.has<Pairs>())
-				UpdatePairs(world, entity, add);
+			.each([&world](flecs::entity action) {
+			action.disable<Action>();
+			bool add = action.has(Operation::Add);
+			TriggerAction(world, action, add);
 				});
 
 		world.system<>("TriggerInverseAction")
 			.with<Operation>().second(flecs::Wildcard)
 			.with<Invert>().id_flags(flecs::TOGGLE).with<Invert>()
-			.each([&world](flecs::entity entity) {
-			entity.disable<Invert>();
-			bool remove = !entity.has(Operation::Add);
-
-			if (entity.has<Pairs>())
-				UpdatePairs(world, entity, remove);
+			.each([&world](flecs::entity action) {
+			action.disable<Invert>();
+			bool remove = !action.has(Operation::Add);
+			TriggerAction(world, action, remove);
 				});
 	}
 }

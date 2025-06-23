@@ -45,6 +45,14 @@ namespace ECS {
 		return result;
 	}
 
+	static inline FString NormalizedPath(const FString& path) {
+		FString result = path;
+		if (result.StartsWith(TEXT("::")))
+			result.RightChopInline(2);
+		result.ReplaceInline(TEXT("::"), TEXT("."));
+		return result;
+	}
+
 	static inline void GetInstances(
 		flecs::world& world,
 		const flecs::entity prefab,
@@ -78,5 +86,4 @@ namespace ECS {
 			});
 		return result;
 	}
-
 }

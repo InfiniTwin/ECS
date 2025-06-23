@@ -4,6 +4,7 @@
 
 #include "flecs.h"
 #include "ECS.h"
+#include "Logging/StructuredLog.h"
 
 namespace ECS {
 	struct ActionFeature {
@@ -47,9 +48,9 @@ namespace ECS {
 		return result;
 	}
 
-	static inline void SetSingletons(flecs::world& world, const FString& data)
+	static inline void SetSingletons(flecs::world& world, flecs::entity action)
 	{
-		FString code = data;
+		FString code = action.get<Code>()->Value;
 		code.ReplaceInline(TEXT("\\n"), TEXT("\n"));
 		code.ReplaceInline(TEXT("$"), TEXT("$ {\n\t"));
 		code.ReplaceInline(TEXT(";"), TEXT("}\n\t"));
@@ -57,6 +58,18 @@ namespace ECS {
 		code += TEXT("}\n}");
 
 		RunScript(world, "Set Singletons", code);
+	}
+
+	static inline void AddComponents(flecs::world& world, flecs::entity action)
+	{
+		FString code = ECS::NormalizedPath(action.get<Target>()->Value);
+		code += TEXT(" {\n");
+		code += action.get<Code>()->Value;
+		code += TEXT("\n}");
+
+		RunScript(world, "Add Components", code);
+
+		UE_LOGFMT(LogTemp, Warning, ">>> '{code}'", *code);
 	}
 
 	static inline void UpdatePairs(flecs::world& world, flecs::entity action, bool add)
@@ -73,5 +86,15 @@ namespace ECS {
 			else
 				ecs_remove_pair(world, target, first, second);
 		}
+	}
+
+	static inline void TriggerAction(flecs::world& world, flecs::entity action, bool add)
+	{
+		if (action.has<Singletons>())
+			SetSingletons(world, action);
+		else if (action.has<Components>())
+			AddComponents(world, action);
+		else if (action.has<Pairs>())
+			UpdatePairs(world, action, add);
 	}
 }
