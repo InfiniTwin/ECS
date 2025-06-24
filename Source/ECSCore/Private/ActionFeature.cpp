@@ -37,8 +37,27 @@ namespace ECS {
 			.event(flecs::OnSet)
 			.each([](flecs::entity action, Target& target) {
 			FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
-			if (!target.Value.IsEmpty())
-				path += TEXT("::") + target.Value;
+			FString targetValue = target.Value;
+
+			// Go up
+			int32 ltIndex;
+			while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE)
+			{
+				targetValue.RemoveAt(ltIndex, 1, false);
+				int32 lastSepIndex = path.Find(TEXT("::"), ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+				if (lastSepIndex != INDEX_NONE)
+					path = path.Left(lastSepIndex);
+				else
+				{
+					path.Empty();
+					break;
+				}
+			}
+
+			// Add child/ren
+			if (!targetValue.IsEmpty())
+				path += TEXT("::") + targetValue;
+
 			target.Value = ECS::FullPath(path);
 				});
 
