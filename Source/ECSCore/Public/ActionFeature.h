@@ -28,6 +28,26 @@ namespace ECS {
 	struct Components {};
 	struct Pairs {};
 
+	static inline TArray<FString> GetComponents(const FString& input)
+	{
+		TArray<FString> result;
+
+		// Split input by " | "
+		TArray<FString> parts;
+		input.ParseIntoArray(parts, TEXT(" | "), true);
+
+		for (int32 i = 0; i < parts.Num(); ++i)
+		{
+			const FString& part = parts[i];
+			int32 colonIndex;
+			if (part.FindChar(TEXT(':'), colonIndex))
+				result.Add(part.Left(colonIndex).TrimStartAndEnd());
+			else
+				result.Add(part.TrimStartAndEnd());
+		}
+		return result;
+	}
+
 	static inline TMap<FString, FString> GetPairs(const FString& input)
 	{
 		TMap<FString, FString> result;
@@ -64,7 +84,6 @@ namespace ECS {
 
 		RunScript(world, "Set Singletons", code);
 
-		UE_LOGFMT(LogTemp, Warning, ">>> '{code}'", *code);
 	}
 
 	static inline void AddComponents(flecs::world& world, flecs::entity action)
@@ -75,8 +94,18 @@ namespace ECS {
 		FormatCode(code);
 
 		RunScript(world, "Add Components", code);
+	}
 
-		UE_LOGFMT(LogTemp, Warning, ">>> '{code}'", *code);
+	static inline void RemoveComponents(flecs::world& world, flecs::entity action)
+	{
+		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*action.get<Target>()->Value));
+
+		for (const FString& component : GetComponents(action.get<Code>()->Value)) {
+			UE_LOGFMT(LogTemp, Warning, ">>> '{code}'", *component);
+
+			auto componentEntity = world.lookup(TCHAR_TO_UTF8(*FullPath(component))).id();
+			ecs_remove_id(world, target, componentEntity);
+		}
 	}
 
 	static inline void UpdatePairs(flecs::world& world, flecs::entity action, bool add)
@@ -100,7 +129,8 @@ namespace ECS {
 		if (action.has<Singletons>())
 			SetSingletons(world, action);
 		else if (action.has<Components>())
-			AddComponents(world, action);
+			if (add) AddComponents(world, action);
+			else RemoveComponents(world, action);
 		else if (action.has<Pairs>())
 			UpdatePairs(world, action, add);
 	}
