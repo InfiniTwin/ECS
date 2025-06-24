@@ -81,9 +81,7 @@ namespace ECS {
 
 	static inline flecs::entity FirstChild(const flecs::entity& parent) {
 		flecs::entity result{};
-		parent.children([&](flecs::entity child) {
-			result = child;
-			});
+		parent.children([&](flecs::entity child) { result = child; });
 		return result;
 	}
 }

@@ -48,24 +48,31 @@ namespace ECS {
 		return result;
 	}
 
+	static inline void FormatCode(FString& code)
+	{
+		code.ReplaceInline(TEXT("\\n"), TEXT("\n"));
+		code.ReplaceInline(TEXT(" | "), TEXT("\n\t"));
+		code.ReplaceInline(TEXT("<"), TEXT("{"));
+		code.ReplaceInline(TEXT(">"), TEXT("}"));
+		code += TEXT("\n}");
+	}
+
 	static inline void SetSingletons(flecs::world& world, flecs::entity action)
 	{
 		FString code = action.get<Code>()->Value;
-		code.ReplaceInline(TEXT("\\n"), TEXT("\n"));
-		code.ReplaceInline(TEXT("$"), TEXT("$ {\n\t"));
-		code.ReplaceInline(TEXT(";"), TEXT("}\n\t"));
-		code.ReplaceInline(TEXT(","), TEXT(": {"));
-		code += TEXT("}\n}");
+		FormatCode(code);
 
 		RunScript(world, "Set Singletons", code);
+
+		UE_LOGFMT(LogTemp, Warning, ">>> '{code}'", *code);
 	}
 
 	static inline void AddComponents(flecs::world& world, flecs::entity action)
 	{
-		FString code = ECS::NormalizedPath(action.get<Target>()->Value);
+		FString code = action.get<Target>()->Value;
 		code += TEXT(" {\n");
 		code += action.get<Code>()->Value;
-		code += TEXT("\n}");
+		FormatCode(code);
 
 		RunScript(world, "Add Components", code);
 

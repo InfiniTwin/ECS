@@ -58,7 +58,7 @@ namespace ECS {
 			if (!targetValue.IsEmpty())
 				path += TEXT("::") + targetValue;
 
-			target.Value = ECS::FullPath(path);
+			target.Value = ECS::NormalizedPath(path);
 				});
 
 		world.system<>("TriggerAction")
