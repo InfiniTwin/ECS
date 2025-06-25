@@ -4,7 +4,6 @@
 
 #include "flecs.h"
 #include "ECS.h"
-#include "Logging/StructuredLog.h"
 
 namespace ECS {
 	struct ActionFeature {
@@ -31,11 +30,8 @@ namespace ECS {
 	static inline TArray<FString> GetComponents(const FString& input)
 	{
 		TArray<FString> result;
-
-		// Split input by " | "
 		TArray<FString> parts;
 		input.ParseIntoArray(parts, TEXT(" | "), true);
-
 		for (int32 i = 0; i < parts.Num(); ++i)
 		{
 			const FString& part = parts[i];
@@ -51,10 +47,8 @@ namespace ECS {
 	static inline TMap<FString, FString> GetPairs(const FString& input)
 	{
 		TMap<FString, FString> result;
-
 		TArray<FString> pairs;
 		input.ParseIntoArray(pairs, TEXT(";"), true);
-
 		for (const FString& pair : pairs)
 		{
 			FString key, value;
@@ -81,38 +75,30 @@ namespace ECS {
 	{
 		FString code = action.get<Code>()->Value;
 		FormatCode(code);
-
 		RunScript(world, "Set Singletons", code);
 
 	}
 
 	static inline void AddComponents(flecs::world& world, flecs::entity action)
 	{
-		FString code = action.get<Target>()->Value;
+		FString code = NormalizedPath(action.get<Target>()->Value);
 		code += TEXT(" {\n");
 		code += action.get<Code>()->Value;
 		FormatCode(code);
-
 		RunScript(world, "Add Components", code);
 	}
 
 	static inline void RemoveComponents(flecs::world& world, flecs::entity action)
 	{
 		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*action.get<Target>()->Value));
-
-		for (const FString& component : GetComponents(action.get<Code>()->Value)) {
-			UE_LOGFMT(LogTemp, Warning, ">>> '{code}'", *component);
-
-			auto id = ecs_id_from_str(world, TCHAR_TO_UTF8(*FullPath(component)));
-			//auto id = world.lookup(TCHAR_TO_UTF8(*FullPath(component))).type_id();
-			ecs_remove_id(world, target, id);
-		}
+		for (const FString& component : GetComponents(action.get<Code>()->Value))
+			ecs_remove_id(world, target, 
+				ecs_id_from_str(world, TCHAR_TO_UTF8(*NormalizedPath(component))));
 	}
 
 	static inline void UpdatePairs(flecs::world& world, flecs::entity action, bool add)
 	{
 		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*action.get<Target>()->Value));
-
 		for (const TPair<FString, FString>& pair : GetPairs(action.get<Code>()->Value))
 		{
 			auto first = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Key))).id();
