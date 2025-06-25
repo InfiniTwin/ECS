@@ -82,7 +82,7 @@ namespace ECS {
 	static inline void AddComponents(flecs::world& world, flecs::entity action)
 	{
 		FString code = NormalizedPath(action.get<Target>()->Value);
-		code += TEXT(" {\n");
+		code += TEXT(" {");
 		code += action.get<Code>()->Value;
 		FormatCode(code);
 		RunScript(world, "Add Components", code);

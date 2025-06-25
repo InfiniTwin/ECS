@@ -38,9 +38,8 @@ namespace ECS {
 			.each([](flecs::entity action, Target& target) {
 			FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
 			FString targetValue = target.Value;
-			// Go up
 			int32 ltIndex;
-			while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE)
+			while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE) // Go up
 			{
 				targetValue.RemoveAt(ltIndex, 1, false);
 				int32 lastSepIndex = path.Find(TEXT("::"), ESearchCase::IgnoreCase, ESearchDir::FromEnd);
@@ -52,10 +51,8 @@ namespace ECS {
 					break;
 				}
 			}
-			// Add child/ren
-			if (!targetValue.IsEmpty())
+			if (!targetValue.IsEmpty()) // Add child/ren
 				path += TEXT("::") + targetValue;
-
 			target.Value = ECS::FullPath(path);
 				});
 
@@ -64,8 +61,7 @@ namespace ECS {
 			.with<Action>().id_flags(flecs::TOGGLE).with<Action>()
 			.each([&world](flecs::entity action) {
 			action.disable<Action>();
-			bool add = action.has(Operation::Add);
-			TriggerAction(world, action, add);
+			TriggerAction(world, action, action.has(Operation::Add));
 				});
 
 		world.system<>("TriggerInverseAction")
@@ -73,8 +69,7 @@ namespace ECS {
 			.with<Invert>().id_flags(flecs::TOGGLE).with<Invert>()
 			.each([&world](flecs::entity action) {
 			action.disable<Invert>();
-			bool remove = !action.has(Operation::Add);
-			TriggerAction(world, action, remove);
+			TriggerAction(world, action, !action.has(Operation::Add));
 				});
 	}
 }
