@@ -103,8 +103,9 @@ namespace ECS {
 		for (const FString& component : GetComponents(action.get<Code>()->Value)) {
 			UE_LOGFMT(LogTemp, Warning, ">>> '{code}'", *component);
 
-			auto componentEntity = world.lookup(TCHAR_TO_UTF8(*FullPath(component))).id();
-			ecs_remove_id(world, target, componentEntity);
+			auto id = ecs_id_from_str(world, TCHAR_TO_UTF8(*FullPath(component)));
+			//auto id = world.lookup(TCHAR_TO_UTF8(*FullPath(component))).type_id();
+			ecs_remove_id(world, target, id);
 		}
 	}
 

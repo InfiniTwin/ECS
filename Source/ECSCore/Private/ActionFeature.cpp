@@ -38,7 +38,6 @@ namespace ECS {
 			.each([](flecs::entity action, Target& target) {
 			FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
 			FString targetValue = target.Value;
-
 			// Go up
 			int32 ltIndex;
 			while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE)
@@ -53,7 +52,6 @@ namespace ECS {
 					break;
 				}
 			}
-
 			// Add child/ren
 			if (!targetValue.IsEmpty())
 				path += TEXT("::") + targetValue;
