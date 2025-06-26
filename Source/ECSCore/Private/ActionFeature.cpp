@@ -57,7 +57,7 @@ namespace ECS {
 				});
 
 		world.system<>("TriggerAction")
-			.with<Operation>().second(flecs::Wildcard)
+			.with<Operation>(flecs::Wildcard)
 			.with<Action>().id_flags(flecs::TOGGLE).with<Action>()
 			.each([&world](flecs::entity action) {
 			action.disable<Action>();
@@ -65,7 +65,7 @@ namespace ECS {
 				});
 
 		world.system<>("TriggerInverseAction")
-			.with<Operation>().second(flecs::Wildcard)
+			.with<Operation>(flecs::Wildcard)
 			.with<Invert>().id_flags(flecs::TOGGLE).with<Invert>()
 			.each([&world](flecs::entity action) {
 			action.disable<Invert>();
