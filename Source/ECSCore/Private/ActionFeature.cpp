@@ -33,29 +33,6 @@ namespace ECS {
 	}
 
 	void ActionFeature::CreateSystems(flecs::world& world) {
-		world.observer<Target>("SetActionTarget")
-			.event(flecs::OnSet)
-			.each([](flecs::entity action, Target& target) {
-			FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
-			FString targetValue = target.Value;
-			int32 ltIndex;
-			while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE) // Go up
-			{
-				targetValue.RemoveAt(ltIndex, 1, false);
-				int32 lastSepIndex = path.Find(TEXT("::"), ESearchCase::IgnoreCase, ESearchDir::FromEnd);
-				if (lastSepIndex != INDEX_NONE)
-					path = path.Left(lastSepIndex);
-				else
-				{
-					path.Empty();
-					break;
-				}
-			}
-			if (!targetValue.IsEmpty()) // Add child/ren
-				path += TEXT("::") + targetValue;
-			target.Value = ECS::FullPath(path);
-				});
-
 		world.system<>("TriggerAction")
 			.with<Operation>(flecs::Wildcard)
 			.with<Action>().id_flags(flecs::TOGGLE).with<Action>()

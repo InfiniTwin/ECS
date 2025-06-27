@@ -62,6 +62,28 @@ namespace ECS {
 		return result;
 	}
 
+	static inline FString GetTarget(flecs::entity action)
+	{
+		FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
+		FString targetValue = action.get<Target>()->Value;
+		int32 ltIndex;
+		while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE) // Go up
+		{
+			targetValue.RemoveAt(ltIndex, 1, false);
+			int32 lastSepIndex = path.Find(TEXT("::"), ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+			if (lastSepIndex != INDEX_NONE)
+				path = path.Left(lastSepIndex);
+			else
+			{
+				path.Empty();
+				break;
+			}
+		}
+		if (!targetValue.IsEmpty()) // Add child/ren
+			path += TEXT("::") + targetValue;
+		return ECS::FullPath(path);
+	}
+
 	static inline void FormatCode(FString& code)
 	{
 		code.ReplaceInline(TEXT("\\n"), TEXT("\n"));
@@ -81,7 +103,7 @@ namespace ECS {
 
 	static inline void AddComponents(flecs::world& world, flecs::entity action)
 	{
-		FString code = NormalizedPath(action.get<Target>()->Value);
+		FString code = NormalizedPath(GetTarget(action));
 		code += TEXT(" {");
 		code += action.get<Code>()->Value;
 		FormatCode(code);
@@ -90,15 +112,15 @@ namespace ECS {
 
 	static inline void RemoveComponents(flecs::world& world, flecs::entity action)
 	{
-		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*action.get<Target>()->Value));
+		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*GetTarget(action)));
 		for (const FString& component : GetComponents(action.get<Code>()->Value))
-			ecs_remove_id(world, target, 
+			ecs_remove_id(world, target,
 				ecs_id_from_str(world, TCHAR_TO_UTF8(*NormalizedPath(component))));
 	}
 
 	static inline void UpdatePairs(flecs::world& world, flecs::entity action, bool add)
 	{
-		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*action.get<Target>()->Value));
+		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*GetTarget(action)));
 		for (const TPair<FString, FString>& pair : GetPairs(action.get<Code>()->Value))
 		{
 			auto first = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Key))).id();
