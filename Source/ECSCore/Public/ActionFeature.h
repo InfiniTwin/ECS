@@ -98,7 +98,6 @@ namespace ECS {
 		FString code = action.try_get<Code>()->Value;
 		FormatCode(code);
 		RunScript(world, "Set Singletons", code);
-
 	}
 
 	static inline void AddComponents(flecs::world& world, flecs::entity action)
