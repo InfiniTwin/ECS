@@ -65,7 +65,7 @@ namespace ECS {
 	static inline FString GetTarget(flecs::entity action)
 	{
 		FString path = UTF8_TO_TCHAR(action.parent().path().c_str());
-		FString targetValue = action.get<Target>()->Value;
+		FString targetValue = action.try_get<Target>()->Value;
 		int32 ltIndex;
 		while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE) // Go up
 		{
@@ -95,7 +95,7 @@ namespace ECS {
 
 	static inline void SetSingletons(flecs::world& world, flecs::entity action)
 	{
-		FString code = action.get<Code>()->Value;
+		FString code = action.try_get<Code>()->Value;
 		FormatCode(code);
 		RunScript(world, "Set Singletons", code);
 
@@ -105,7 +105,7 @@ namespace ECS {
 	{
 		FString code = NormalizedPath(GetTarget(action));
 		code += TEXT(" {");
-		code += action.get<Code>()->Value;
+		code += action.try_get<Code>()->Value;
 		FormatCode(code);
 		RunScript(world, "Add Components", code);
 	}
@@ -113,7 +113,7 @@ namespace ECS {
 	static inline void RemoveComponents(flecs::world& world, flecs::entity action)
 	{
 		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*GetTarget(action)));
-		for (const FString& component : GetComponents(action.get<Code>()->Value))
+		for (const FString& component : GetComponents(action.try_get<Code>()->Value))
 			ecs_remove_id(world, target,
 				ecs_id_from_str(world, TCHAR_TO_UTF8(*NormalizedPath(component))));
 	}
@@ -121,7 +121,7 @@ namespace ECS {
 	static inline void UpdatePairs(flecs::world& world, flecs::entity action, bool add)
 	{
 		flecs::entity target = world.lookup(TCHAR_TO_UTF8(*GetTarget(action)));
-		for (const TPair<FString, FString>& pair : GetPairs(action.get<Code>()->Value))
+		for (const TPair<FString, FString>& pair : GetPairs(action.try_get<Code>()->Value))
 		{
 			auto first = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Key))).id();
 			auto second = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Value))).id();
