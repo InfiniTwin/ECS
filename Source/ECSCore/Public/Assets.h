@@ -63,6 +63,14 @@ namespace Assets {
 	}
 
 	template<typename... Args>
+	inline char* LoadTextFile(const FString& path) {
+		FString content;
+		if (!FFileHelper::LoadFileToString(content, *path))
+			return _strdup("");
+		return _strdup(TCHAR_TO_UTF8(*content));
+	}
+
+	template<typename... Args>
 	inline char* LoadJsonAsset(Args... args) {
 		return LoadTextAsset(JsonExtension, args...);
 	}
