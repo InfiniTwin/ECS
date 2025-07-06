@@ -52,6 +52,8 @@ namespace ECS {
 			*data = FText::FromString(UTF8_TO_TCHAR(value));
 		});
 
+		world.component<TArray<int>>().opaque(ArrayType<int>);
 		world.component<TArray<float>>().opaque(ArrayType<float>);
+		world.component<TArray<FVector3f>>().opaque(ArrayType<FVector3f>);
 	}
 }
