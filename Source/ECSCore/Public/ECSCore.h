@@ -5,8 +5,7 @@
 #include "Modules/ModuleManager.h"
 #include <flecs.h>
 
-class FECSCoreModule : public IModuleInterface
-{
+class FECSCoreModule : public IModuleInterface {
 public:
 
 	/** IModuleInterface implementation */
@@ -53,5 +52,4 @@ namespace ECS {
 			return &(*data)[elem];
 		});
 	}
-
 }
