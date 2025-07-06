@@ -18,8 +18,6 @@ namespace ECS {
 
 	constexpr const char* VALUE = "Value";
 
-	void RegisterOpaqueTypes(flecs::world& world);
-
 	ECSCORE_API extern TMap<FString, FString> Tokens;
 
 	static inline FString SetScopes(const FString& data) {
@@ -56,8 +54,7 @@ namespace ECS {
 	static inline void GetInstances(
 		flecs::world& world,
 		const flecs::entity prefab,
-		TArray<flecs::entity>& instances)
-	{
+		TArray<flecs::entity>& instances) {
 		TQueue<flecs::entity> queue;
 		queue.Enqueue(prefab);
 		TSet<uint64> seen;
@@ -75,7 +72,7 @@ namespace ECS {
 						instances.Add(instance);
 					}
 				}
-				});
+			});
 		}
 	}
 
