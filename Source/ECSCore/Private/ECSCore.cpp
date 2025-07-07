@@ -35,10 +35,10 @@ namespace ECS {
 			.serialize([](const flecs::serializer* s, const FString* data) {
 			const char* str = TCHAR_TO_UTF8(**data);
 			return s->value(flecs::String, &str);
-				})
+		})
 			.assign_string([](FString* data, const char* value) {
 			*data = UTF8_TO_TCHAR(value);
-				});
+		});
 
 		// FText <=> flecs::String
 		world.component<FText>()
@@ -47,10 +47,10 @@ namespace ECS {
 			FString temp = data->ToString();
 			const char* str = TCHAR_TO_UTF8(*temp);
 			return s->value(flecs::String, &str);
-				})
+		})
 			.assign_string([](FText* data, const char* value) {
 			*data = FText::FromString(UTF8_TO_TCHAR(value));
-				});
+		});
 
 		world.component<FVector3f>()
 			.member<float>(MEMBER(FVector3f::X))
@@ -68,6 +68,12 @@ namespace ECS {
 			.member<float>(MEMBER(FMargin::Top))
 			.member<float>(MEMBER(FMargin::Right))
 			.member<float>(MEMBER(FMargin::Bottom));
+
+		world.component<FLinearColor>()
+			.member<float>(MEMBER(FLinearColor::R))
+			.member<float>(MEMBER(FLinearColor::G))
+			.member<float>(MEMBER(FLinearColor::B))
+			.member<float>(MEMBER(FLinearColor::A));
 
 		world.component<TArray<int>>().opaque(ArrayType<int>);
 		world.component<TArray<float>>().opaque(ArrayType<float>);
