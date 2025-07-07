@@ -27,7 +27,7 @@ namespace ECS {
 	template <typename Element, typename Array = TArray<Element>>
 	flecs::opaque<Array, Element> ArrayType(flecs::world& world) {
 		flecs::entity array = world.vector<Element>();
-		FString Name = FString::Printf(TEXT("Array_%s"), *FString(world.component<Element>().name()));
+		FString Name = FString::Printf(TEXT("OpaqueArray_%s"), *FString(world.component<Element>().name()));
 		array.set_name(TCHAR_TO_ANSI(*Name));
 
 		return flecs::opaque<Array, Element>()

@@ -52,31 +52,32 @@ namespace ECS {
 			*data = FText::FromString(UTF8_TO_TCHAR(value));
 		});
 
-		world.component<FVector3f>()
+		world.component<FVector3f>(MEMBER(FVector3f))
 			.member<float>(MEMBER(FVector3f::X))
 			.member<float>(MEMBER(FVector3f::Y))
 			.member<float>(MEMBER(FVector3f::Z));
 
-		world.component<FVector4f>()
+		world.component<FVector4f>(MEMBER(FVector4f))
 			.member<float>(MEMBER(FVector4f::X))
 			.member<float>(MEMBER(FVector4f::Y))
 			.member<float>(MEMBER(FVector4f::Z))
-			.member<float>(MEMBER(FVector4f::Q));
+			.member<float>(MEMBER(FVector4f::W));
 
-		world.component<FMargin>()
+		world.component<FMargin>(MEMBER(FMargin))
 			.member<float>(MEMBER(FMargin::Left))
 			.member<float>(MEMBER(FMargin::Top))
 			.member<float>(MEMBER(FMargin::Right))
 			.member<float>(MEMBER(FMargin::Bottom));
 
-		world.component<FLinearColor>()
+		world.component<FLinearColor>(MEMBER(FLinearColor))
 			.member<float>(MEMBER(FLinearColor::R))
 			.member<float>(MEMBER(FLinearColor::G))
 			.member<float>(MEMBER(FLinearColor::B))
 			.member<float>(MEMBER(FLinearColor::A));
 
-		world.component<TArray<int>>().opaque(ArrayType<int>);
-		world.component<TArray<float>>().opaque(ArrayType<float>);
-		world.component<TArray<FVector4f>>().opaque(ArrayType<FVector4f>);
+		world.component<TArray<int>>("Array_int").opaque(ArrayType<int>);
+		world.component<TArray<float>>("Array_float").opaque(ArrayType<float>);
+		world.component<TArray<FVector3f>>("Array_FVector3f").opaque(ArrayType<FVector3f>);
+		world.component<TArray<FVector4f>>("Array_FVector4f").opaque(ArrayType<FVector4f>);
 	}
 }
