@@ -52,6 +52,19 @@ namespace ECS {
 			*data = FText::FromString(UTF8_TO_TCHAR(value));
 		});
 
+		world.component<FVector3f>()
+			.member<float>(MEMBER(FVector3f::X))
+			.member<float>(MEMBER(FVector3f::Y))
+			.member<float>(MEMBER(FVector3f::Z))
+			.set_name(MEMBER(FVector3f));
+
+		world.component<FMargin>()
+			.member<float>(MEMBER(FMargin::Left))
+			.member<float>(MEMBER(FMargin::Top))
+			.member<float>(MEMBER(FMargin::Right))
+			.member<float>(MEMBER(FMargin::Bottom))
+			.set_name(MEMBER(FMargin));
+
 		world.component<TArray<int>>().opaque(ArrayType<int>);
 		world.component<TArray<float>>().opaque(ArrayType<float>);
 		world.component<TArray<FVector3f>>().opaque(ArrayType<FVector3f>);
