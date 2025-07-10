@@ -29,7 +29,6 @@ namespace ECS {
 	}
 
 	void RegisterOpaqueTypes(flecs::world& world) {
-		// FString <=> flecs::String
 		world.component<FString>()
 			.opaque(flecs::String)
 			.serialize([](const flecs::serializer* s, const FString* data) {
@@ -40,7 +39,6 @@ namespace ECS {
 			*data = UTF8_TO_TCHAR(value);
 		});
 
-		// FText <=> flecs::String
 		world.component<FText>()
 			.opaque(flecs::String)
 			.serialize([](const flecs::serializer* s, const FText* data) {
