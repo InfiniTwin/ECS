@@ -26,7 +26,6 @@ namespace Assets {
 			: FPaths::Combine(FPaths::ProjectContentDir(), localPath);
 	}
 
-	template<typename... Args>
 	inline TArray<FString> GetFolders(const FString& path) {
 		TArray<FString> folders;
 		IPlatformFile& platformFile = FPlatformFileManager::Get().GetPlatformFile();
@@ -54,29 +53,10 @@ namespace Assets {
 		return FFileHelper::SaveStringToFile(content, *path);
 	}
 
-	template<typename... Args>
-	inline char* LoadTextAsset(const FString& extension, Args... args) {
-		FString content;
-		if (!FFileHelper::LoadFileToString(content, *GetAssetPath(extension, args...)))
-			return _strdup("");
-		return _strdup(TCHAR_TO_UTF8(*content));
-	}
-
-	template<typename... Args>
 	inline char* LoadTextFile(const FString& path) {
 		FString content;
 		if (!FFileHelper::LoadFileToString(content, *path))
 			return _strdup("");
 		return _strdup(TCHAR_TO_UTF8(*content));
-	}
-
-	template<typename... Args>
-	inline char* LoadJsonAsset(Args... args) {
-		return LoadTextAsset(JsonExtension, args...);
-	}
-
-	template<typename... Args>
-	inline char* LoadFlecsAsset(Args... args) {
-		return LoadTextAsset(FlecsExtension, args...);
 	}
 };

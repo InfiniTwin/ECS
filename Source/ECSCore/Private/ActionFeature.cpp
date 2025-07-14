@@ -18,6 +18,7 @@ namespace ECS {
 		world.component<Tags>().add(flecs::OnInstantiate, flecs::Inherit);
 		world.component<Components>().add(flecs::OnInstantiate, flecs::Inherit);
 		world.component<Pairs>().add(flecs::OnInstantiate, flecs::Inherit);
+		world.component<Script>().member<FString>(VALUE).add(flecs::OnInstantiate, flecs::Inherit);
 	}
 
 	void ActionFeature::CreateObservers(flecs::world& world) {
@@ -38,7 +39,10 @@ namespace ECS {
 			.with<Action>().id_flags(flecs::TOGGLE).with<Action>()
 			.each([&world](flecs::entity action) {
 			action.disable<Action>();
-			TriggerAction(world, action, action.has(Operation::Add));
+			if (action.has(Operation::Run))
+				RunScriptAction(world, action);
+			else
+				TriggerAction(world, action, action.has(Operation::Add));
 				});
 
 		world.system<>("TriggerInverseAction")

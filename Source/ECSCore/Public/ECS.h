@@ -3,6 +3,7 @@
 #pragma once
 
 #include <flecs.h>
+#include "Assets.h"
 
 namespace ECS {
 #define COMPONENT(T) ([] { return #T; }())
@@ -27,8 +28,18 @@ namespace ECS {
 		return result;
 	}
 
-	ECSCORE_API void RunScript(flecs::world& world, const FString& path);
-	ECSCORE_API void RunScript(flecs::world& world, const FString& name, const FString& code);
+	ECSCORE_API void RunCode(flecs::world& world, const FString& name, const FString& code);
+
+	using namespace Assets;
+	template<typename... Args>
+	inline void RunScript(flecs::world& world, Args... args) {
+		FString path = GetAssetPath(FlecsExtension, args...);
+		FString code;
+		if (FFileHelper::LoadFileToString(code, *path))
+			RunCode(world, path, *code);
+	}
+
+	ECSCORE_API void RunScripts(flecs::world& world, const FString& folder, const TArray<FString>& files);
 
 	static inline FString FullPath(const FString& path) {
 		FString result = path;
@@ -67,7 +78,7 @@ namespace ECS {
 						instances.Add(instance);
 					}
 				}
-			});
+				});
 		}
 	}
 

@@ -16,7 +16,8 @@ namespace ECS {
 	struct Invert {};
 	enum Operation {
 		Add,
-		Remove
+		Remove,
+		Run
 	};
 
 	struct Target { FString Value; };
@@ -26,6 +27,7 @@ namespace ECS {
 	struct Tags {};
 	struct Components {};
 	struct Pairs {};
+	struct Script { FString Value; }; // Value is script path relative to Assets folder
 
 	static inline TArray<FString> GetComponents(const FString& input)
 	{
@@ -97,7 +99,7 @@ namespace ECS {
 	{
 		FString code = action.try_get<Code>()->Value;
 		FormatCode(code);
-		RunScript(world, "Set Singletons", code);
+		RunCode(world, "Set Singletons", code);
 	}
 
 	static inline void AddComponents(flecs::world& world, flecs::entity action)
@@ -106,7 +108,7 @@ namespace ECS {
 		code += TEXT(" {");
 		code += action.try_get<Code>()->Value;
 		FormatCode(code);
-		RunScript(world, "Add Components", code);
+		RunCode(world, "Add Components", code);
 	}
 
 	static inline void RemoveComponents(flecs::world& world, flecs::entity action)
@@ -125,10 +127,8 @@ namespace ECS {
 			auto first = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Key))).id();
 			auto second = world.lookup(TCHAR_TO_UTF8(*FullPath(pair.Value))).id();
 
-			if (add)
-				ecs_add_pair(world, target, first, second);
-			else
-				ecs_remove_pair(world, target, first, second);
+			if (add) ecs_add_pair(world, target, first, second);
+			else ecs_remove_pair(world, target, first, second);
 		}
 	}
 
@@ -141,5 +141,12 @@ namespace ECS {
 			else RemoveComponents(world, action);
 		else if (action.has<Pairs>())
 			UpdatePairs(world, action, add);
+	}
+
+	static inline void RunScriptAction(flecs::world& world, flecs::entity action)
+	{
+		auto script = action.try_get<Script>();
+		if (script && !script->Value.IsEmpty())
+			RunScript(world, script->Value);
 	}
 }

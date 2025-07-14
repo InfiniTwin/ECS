@@ -6,15 +6,12 @@
 namespace ECS {
 	TMap<FString, FString> Tokens;
 
-	void RunScript(flecs::world& world, const FString& path) {
-		using namespace Assets;
-		char* data = LoadFlecsAsset(path);
-		FString code = UTF8_TO_TCHAR(data);
-		free(data);
-		RunScript(world, path, code);
+	void RunScripts(flecs::world& world, const FString& folder, const TArray<FString>& files) {
+		for (const FString& file : files) 
+			RunScript(world, folder, file);
 	}
 
-	void RunScript(flecs::world& world, const FString& name, const FString& code) {
+	void RunCode(flecs::world& world, const FString& name, const FString& code) {
 		FString scopedCode = SetScopes(code);
 		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*scopedCode)))
 			UE_LOG(LogTemp, Error, TEXT(">>> Error Running Flecs Script: %s"), *name);
