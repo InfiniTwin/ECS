@@ -50,6 +50,10 @@ namespace ECS {
 			*data = FText::FromString(UTF8_TO_TCHAR(value));
 		});
 
+		world.component<FVector2D>(MEMBER(FVector2D))
+			.member<double>(MEMBER(FVector2D::X))
+			.member<double>(MEMBER(FVector2D::Y));
+
 		world.component<FVector3f>(MEMBER(FVector3f))
 			.member<float>(MEMBER(FVector3f::X))
 			.member<float>(MEMBER(FVector3f::Y))
