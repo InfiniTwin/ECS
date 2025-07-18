@@ -149,6 +149,6 @@ namespace ECS {
 		auto target = ECS::NormalizedPath(GetTarget(action));
 
 		if (script && !script->Value.IsEmpty())
-			RunScripts(world, "", {script->Value}, target);
+			RunScript(world, "", script->Value, target);
 	}
 }
