@@ -20,8 +20,8 @@ namespace ECS {
 	void RunCode(flecs::world& world, const FString& name, const FString& code, const FString& target) {
 		auto codeValue = code;
 		codeValue.ReplaceInline(TARGET, *target);
-		FString scopedCode = SetScopes(codeValue);
-		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*scopedCode)))
+		codeValue = SetScopes(codeValue);
+		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*codeValue)))
 			UE_LOG(LogTemp, Error, TEXT(">>> Error Running Flecs Script: %s"), *name);
 	}
 }
