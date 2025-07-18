@@ -71,7 +71,7 @@ namespace ECS {
 		int32 ltIndex;
 		while ((ltIndex = targetValue.Find(TEXT("<"))) != INDEX_NONE) // Go up
 		{
-			targetValue.RemoveAt(ltIndex, 1, false);
+			targetValue.RemoveAt(ltIndex, 1, EAllowShrinking::No);
 			int32 lastSepIndex = path.Find(TEXT("::"), ESearchCase::IgnoreCase, ESearchDir::FromEnd);
 			if (lastSepIndex != INDEX_NONE)
 				path = path.Left(lastSepIndex);
