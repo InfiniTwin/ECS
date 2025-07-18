@@ -19,7 +19,15 @@ namespace ECS {
 
 	constexpr const char* VALUE = "Value";
 
+	inline constexpr TCHAR TARGET[] = TEXT("[TARGET]");
+
 	ECSCORE_API extern TMap<FString, FString> Tokens;
+
+	ECSCORE_API void RunCode(flecs::world& world, const FString& name, const FString& code, const FString& target = "");
+
+	ECSCORE_API void RunScript(flecs::world& world, const FString& path, const FString& file, const FString& target = "");
+
+	ECSCORE_API void RunScripts(flecs::world& world, const FString& path, const TArray<FString>& files, const FString& target = "");
 
 	static inline FString SetScopes(const FString& data) {
 		FString result = data;
@@ -27,19 +35,6 @@ namespace ECS {
 			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
 		return result;
 	}
-
-	ECSCORE_API void RunCode(flecs::world& world, const FString& name, const FString& code);
-
-	using namespace Assets;
-	template<typename... Args>
-	inline void RunScript(flecs::world& world, Args... args) {
-		FString path = GetAssetPath(FlecsExtension, args...);
-		FString code;
-		if (FFileHelper::LoadFileToString(code, *path))
-			RunCode(world, path, *code);
-	}
-
-	ECSCORE_API void RunScripts(flecs::world& world, const FString& folder, const TArray<FString>& files);
 
 	static inline FString FullPath(const FString& path) {
 		FString result = path;

@@ -146,7 +146,9 @@ namespace ECS {
 	static inline void RunScriptAction(flecs::world& world, flecs::entity action)
 	{
 		auto script = action.try_get<Script>();
+		auto target = ECS::NormalizedPath(GetTarget(action));
+
 		if (script && !script->Value.IsEmpty())
-			RunScript(world, script->Value);
+			RunScripts(world, "", {script->Value}, target);
 	}
 }
