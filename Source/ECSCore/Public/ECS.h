@@ -29,12 +29,8 @@ namespace ECS {
 
 	ECSCORE_API void RunScripts(flecs::world& world, const FString& path, const TArray<FString>& files, const FString& target = "");
 
-	static inline FString SetScopes(const FString& data) {
-		FString result = data;
-		for (const auto& Pair : Tokens)
-			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
-		return result;
-	}
+	ECSCORE_API void ClearScript(flecs::world& world, const FString& path, const FString& file, const FString& target = "");
+
 
 	static inline FString FullPath(const FString& path) {
 		FString result = path;

@@ -16,8 +16,7 @@ namespace ECS {
 	struct Invert {};
 	enum Operation {
 		Add,
-		Remove,
-		Run
+		Remove
 	};
 
 	struct Target { FString Value; };
@@ -132,6 +131,20 @@ namespace ECS {
 		}
 	}
 
+	static inline void SwitchScript(flecs::world& world, flecs::entity action, bool add)
+	{
+		auto script = action.try_get<Script>();
+		if (script->Value.IsEmpty())
+			return;
+
+		auto target = GetTarget(action);
+
+		if (add)
+			RunScript(world, "", script->Value, ECS::NormalizedPath(target));
+		else
+			ClearScript(world, "", script->Value, target);
+	}
+
 	static inline void TriggerAction(flecs::world& world, flecs::entity action, bool add)
 	{
 		if (action.has<Singletons>())
@@ -141,14 +154,7 @@ namespace ECS {
 			else RemoveComponents(world, action);
 		else if (action.has<Pairs>())
 			UpdatePairs(world, action, add);
-	}
-
-	static inline void RunScriptAction(flecs::world& world, flecs::entity action)
-	{
-		auto script = action.try_get<Script>();
-		auto target = ECS::NormalizedPath(GetTarget(action));
-
-		if (script && !script->Value.IsEmpty())
-			RunScript(world, "", script->Value, target);
+		else if (action.has<Script>())
+			SwitchScript(world, action, add);
 	}
 }

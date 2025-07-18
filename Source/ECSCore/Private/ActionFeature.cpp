@@ -34,16 +34,7 @@ namespace ECS {
 	}
 
 	void ActionFeature::CreateSystems(flecs::world& world) {
-		world.system<>("TriggerScriptAction")
-			.with(Operation::Run)
-			.with<Action>().id_flags(flecs::TOGGLE).with<Action>()
-			.each([&world](flecs::entity action) {
-			action.disable<Action>();
-			RunScriptAction(world, action);
-				});
-
-		world.system<>("TriggerEntityAction")
-			.without(Operation::Run)
+		world.system<>("TriggerAction")
 			.with<Action>().id_flags(flecs::TOGGLE).with<Action>()
 			.each([&world](flecs::entity action) {
 			action.disable<Action>();
@@ -52,7 +43,6 @@ namespace ECS {
 
 		world.system<>("TriggerInverseAction")
 			.with<Operation>(flecs::Wildcard)
-			.without(Operation::Run)
 			.with<Invert>().id_flags(flecs::TOGGLE).with<Invert>()
 			.each([&world](flecs::entity action) {
 			action.disable<Invert>();
