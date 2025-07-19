@@ -12,7 +12,8 @@ namespace ECS {
 
 	FString FormatCode(const FString& data, const FString& target) {
 		FString result = data;
-		result.ReplaceInline(TARGET, *target);
+		if (!target.IsEmpty())
+			result.ReplaceInline(TARGET, *target);
 		for (const auto& Pair : Tokens)
 			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
 		return result;
@@ -31,7 +32,8 @@ namespace ECS {
 	}
 
 	void RunCode(flecs::world& world, const FString& name, const FString& code, const FString& target) {
-		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*FormatCode(code, target))))
+		FString formated = FormatCode(code, target);
+		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*formated)))
 			UE_LOG(LogTemp, Warning, TEXT(">>> Failed to Run Flecs Script: %s"), *name);
 	}
 
