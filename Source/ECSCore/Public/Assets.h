@@ -2,11 +2,9 @@
 
 #pragma once
 
-#include "Misc/FileHelper.h"
 #include "HAL/PlatformFilemanager.h"
+#include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
-#include "DesktopPlatformModule.h"
-#include "Framework/Application/SlateApplication.h"
 
 inline constexpr TCHAR AssetsFolder[] = TEXT("Assets");
 inline constexpr TCHAR JsonExtension[] = TEXT(".json");
@@ -60,34 +58,5 @@ namespace Assets {
 		if (!FFileHelper::LoadFileToString(content, *path))
 			return _strdup("");
 		return _strdup(TCHAR_TO_UTF8(*content));
-	}
-
-	ECSCORE_API inline TArray<FString> SelectFiles(const FString& dialogTitle = TEXT("Select Files"), const FString& defaultPath = FPaths::ProjectDir(), const FString& fileTypes = TEXT("All Files (*.*)|*.*"))
-	{
-		TArray<FString> selectedFiles;
-
-		IDesktopPlatform* desktopPlatform = FDesktopPlatformModule::Get();
-		if (desktopPlatform) {
-			void* parentWindowHandle = nullptr;
-
-#if WITH_EDITOR
-			const TSharedPtr<SWindow> parentWindow = FSlateApplication::IsInitialized() ? FSlateApplication::Get().FindBestParentWindowForDialogs(nullptr) : nullptr;
-			if (parentWindow.IsValid()) {
-				parentWindowHandle = parentWindow->GetNativeWindow()->GetOSWindowHandle();
-			}
-#endif
-
-			desktopPlatform->OpenFileDialog(
-				parentWindowHandle,
-				dialogTitle,
-				defaultPath,
-				TEXT(""),
-				fileTypes,
-				EFileDialogFlags::Multiple,
-				selectedFiles
-			);
-		}
-
-		return selectedFiles;
 	}
 };
