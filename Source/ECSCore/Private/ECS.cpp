@@ -3,36 +3,47 @@
 #include "ECS.h"
 
 namespace ECS {
-	TMap<FString, FString> Tokens;
+	TMap<FString, FString> Scopes;
+
+	const TMap<FString, FString>& EmptyTokens() {
+		static const TMap<FString, FString> Empty;
+		return Empty;
+	}
+
+	TMap<FString, FString> Tokens(const TArray<TPair<FString, FString>>& pairs) {
+		TMap<FString, FString> map;
+		for (const auto& pair : pairs)
+			map.Add(pair.Key, pair.Value);
+		return map;
+	}
+
+	FString FormatCode(const FString& code, const TMap<FString, FString>& tokens = EmptyTokens()) {
+		FString result = code;
+		for (const auto& pair : tokens)
+			result.ReplaceInline(*pair.Key, *pair.Value, ESearchCase::CaseSensitive);
+		for (const auto& pair : Scopes)
+			result.ReplaceInline(*pair.Key, *pair.Value, ESearchCase::CaseSensitive);
+		return result;
+	}
 
 	bool LoadScriptFile(const FString& path, const FString& file, FString& outFilePath, FString& outCode) {
 		outFilePath = Assets::GetAssetPath(FlecsExtension, path, file);
 		return FFileHelper::LoadFileToString(outCode, *outFilePath);
 	}
 
-	FString FormatCode(const FString& data, const FString& target) {
-		FString result = data;
-		if (!target.IsEmpty())
-			result.ReplaceInline(TARGET, *target);
-		for (const auto& Pair : Tokens)
-			result = result.Replace(*Pair.Key, *Pair.Value, ESearchCase::CaseSensitive);
-		return result;
-	}
-
-
-	void RunScript(flecs::world& world, const FString& path, const FString& file, const FString& target) {
+	void RunScript(flecs::world& world, const FString& path, const FString& file, const TMap<FString, FString>& tokens) {
 		FString filePath, code;
 		if (LoadScriptFile(path, file, filePath, code))
-			RunCode(world, filePath, *code, target);
+			RunCode(world, filePath, *code, tokens);
 	}
 
-	void RunScripts(flecs::world& world, const FString& path, const TArray<FString>& files, const FString& target) {
+	void RunScripts(flecs::world& world, const FString& path, const TArray<FString>& files, const TMap<FString, FString>& tokens) {
 		for (const FString& file : files)
-			RunScript(world, path, file, target);
+			RunScript(world, path, file, tokens);
 	}
 
-	void RunCode(flecs::world& world, const FString& name, const FString& code, const FString& target) {
-		FString formated = FormatCode(code, target);
+	void RunCode(flecs::world& world, const FString& name, const FString& code, const TMap<FString, FString>& tokens) {
+		FString formated = FormatCode(code, tokens);
 		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*formated)))
 			UE_LOG(LogTemp, Warning, TEXT(">>> Failed to Run Flecs Script: %s"), *name);
 	}
@@ -55,12 +66,12 @@ namespace ECS {
 		return result;
 	}
 
-	void ClearScript(flecs::world& world, const FString& path, const FString& file, const FString& target) {
+	void ClearScript(flecs::world& world, const FString& path, const FString& file, const TMap<FString, FString>& tokens) {
 		FString filePath, code;
 		if (!LoadScriptFile(path, file, filePath, code))
 			return;
 
-		FString formated = *FormatCode(code, target);
+		FString formated = *FormatCode(code, tokens);
 
 		TArray<FString> paths = GetEntityPaths(formated);
 		for (const FString& fullPath : paths)

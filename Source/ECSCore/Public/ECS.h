@@ -17,20 +17,39 @@ namespace ECS {
 	}
 #define MEMBER(str) Member(#str)
 
+#define TOKEN(Key, Value) TPair<FString, FString>(Key, Value)
+
 	constexpr const char* VALUE = "Value";
 
-	inline constexpr TCHAR TARGET[] = TEXT("[TARGET]");
+	ECSCORE_API extern TMap<FString, FString> Scopes;
 
-	ECSCORE_API extern TMap<FString, FString> Tokens;
+	ECSCORE_API const TMap<FString, FString>& EmptyTokens();
 
-	ECSCORE_API void RunCode(flecs::world& world, const FString& name, const FString& code, const FString& target = "");
+	ECSCORE_API TMap<FString, FString> Tokens(const TArray<TPair<FString, FString>>& pairs);
 
-	ECSCORE_API void RunScript(flecs::world& world, const FString& path, const FString& file, const FString& target = "");
+	ECSCORE_API void RunCode(
+		flecs::world& world, 
+		const FString& name, 
+		const FString& code, 
+		const TMap<FString, FString>& tokens = EmptyTokens());
 
-	ECSCORE_API void RunScripts(flecs::world& world, const FString& path, const TArray<FString>& files, const FString& target = "");
+	ECSCORE_API void RunScript(
+		flecs::world& world, 
+		const FString& path, 
+		const FString& file, 
+		const TMap<FString, FString>& tokens = EmptyTokens());
 
-	ECSCORE_API void ClearScript(flecs::world& world, const FString& path, const FString& file, const FString& target = "");
+	ECSCORE_API void RunScripts(
+		flecs::world& world, 
+		const FString& path, 
+		const TArray<FString>& files, 
+		const TMap<FString, FString>& tokens = EmptyTokens());
 
+	ECSCORE_API void ClearScript(
+		flecs::world& world, 
+		const FString& path, 
+		const FString& file, 
+		const TMap<FString, FString>& tokens = EmptyTokens());
 
 	static inline FString FullPath(const FString& path) {
 		FString result = path;

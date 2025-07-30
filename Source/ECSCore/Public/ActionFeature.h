@@ -12,6 +12,8 @@ namespace ECS {
 		static void CreateSystems(flecs::world& world);
 	};
 
+	inline constexpr TCHAR TARGET[] = TEXT("[TARGET]");
+
 	struct Action {};
 	struct Invert {};
 	enum Operation {
@@ -140,9 +142,11 @@ namespace ECS {
 		auto target = GetTarget(action);
 
 		if (add)
-			RunScript(world, "", script->Value, ECS::NormalizedPath(target));
+			RunScript(world, "", script->Value,
+				Tokens({ TOKEN(TARGET, ECS::NormalizedPath(target)) }));
 		else
-			ClearScript(world, "", script->Value, target);
+			ClearScript(world, "", script->Value,
+				Tokens({ TOKEN(TARGET, target) }));
 	}
 
 	static inline void TriggerAction(flecs::world& world, flecs::entity action, bool add)
