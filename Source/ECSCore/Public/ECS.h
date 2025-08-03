@@ -21,6 +21,9 @@ namespace ECS {
 
 	constexpr const char* VALUE = "Value";
 
+	inline constexpr TCHAR PATH[] = TEXT("[PATH]");
+	inline constexpr TCHAR TARGET[] = TEXT("[TARGET]");
+
 	ECSCORE_API extern TMap<FString, FString> Scopes;
 
 	ECSCORE_API const TMap<FString, FString>& EmptyTokens();
