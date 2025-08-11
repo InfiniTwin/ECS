@@ -141,10 +141,10 @@ namespace ECS {
 
 		if (add)
 			RunScript(world, "", script->Value,
-				Tokens({ TOKEN(PATH, ECS::NormalizedPath(target)) }));
+				Tokens({ TOKEN(TOKEN_PATH, ECS::NormalizedPath(target)) }));
 		else
 			ClearScript(world, "", script->Value,
-				Tokens({ TOKEN(PATH, target) }));
+				Tokens({ TOKEN(TOKEN_PATH, target) }));
 	}
 
 	static inline void TriggerAction(flecs::world& world, flecs::entity action, bool add)
