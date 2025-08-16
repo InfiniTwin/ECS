@@ -54,6 +54,10 @@ namespace ECS {
 		const FString& file, 
 		const TMap<FString, FString>& tokens = EmptyTokens());
 
+	static inline FString IdString(const flecs::entity_t id) {
+		return "#" + LexToString(static_cast<uint32>(id));
+	}
+
 	static inline FString FullPath(const FString& path) {
 		FString result = path;
 		result.ReplaceInline(TEXT("."), TEXT("::"));
