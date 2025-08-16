@@ -100,4 +100,10 @@ namespace ECS {
 		parent.children([&](flecs::entity child) { result = child; });
 		return result;
 	}
+
+	static inline bool IsDescendant(flecs::entity descendant, flecs::entity ancestor) {
+		for (auto parent = descendant.target(flecs::ChildOf); parent.is_valid(); parent = parent.target(flecs::ChildOf))
+			if (parent == ancestor) return true;
+		return false;
+	}
 }
