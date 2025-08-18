@@ -4,6 +4,8 @@
 
 #include <flecs.h>
 #include "Assets.h"
+#include "Containers/Queue.h"
+#include "Containers/Array.h"
 
 namespace ECS {
 #define COMPONENT(T) ([] { return #T; }())
@@ -31,27 +33,27 @@ namespace ECS {
 	ECSCORE_API TMap<FString, FString> Tokens(const TArray<TPair<FString, FString>>& pairs);
 
 	ECSCORE_API void RunCode(
-		flecs::world& world, 
-		const FString& name, 
-		const FString& code, 
+		flecs::world& world,
+		const FString& name,
+		const FString& code,
 		const TMap<FString, FString>& tokens = EmptyTokens());
 
 	ECSCORE_API void RunScript(
-		flecs::world& world, 
-		const FString& path, 
-		const FString& file, 
+		flecs::world& world,
+		const FString& path,
+		const FString& file,
 		const TMap<FString, FString>& tokens = EmptyTokens());
 
 	ECSCORE_API void RunScripts(
-		flecs::world& world, 
-		const FString& path, 
-		const TArray<FString>& files, 
+		flecs::world& world,
+		const FString& path,
+		const TArray<FString>& files,
 		const TMap<FString, FString>& tokens = EmptyTokens());
 
 	ECSCORE_API void ClearScript(
-		flecs::world& world, 
-		const FString& path, 
-		const FString& file, 
+		flecs::world& world,
+		const FString& path,
+		const FString& file,
 		const TMap<FString, FString>& tokens = EmptyTokens());
 
 	static inline FString IdString(const flecs::entity_t id) {
@@ -109,5 +111,31 @@ namespace ECS {
 		for (auto parent = descendant.target(flecs::ChildOf); parent.is_valid(); parent = parent.target(flecs::ChildOf))
 			if (parent == ancestor) return true;
 		return false;
+	}
+
+	template <typename... C>
+	TArray<flecs::entity> FindDescendants(flecs::entity ancestor, int32 maxDepth = -1) {
+		static_assert(sizeof...(C) > 0, "FindDescendants needs at least one component type.");
+
+		struct SearchEntry {
+			flecs::entity entity;
+			int32 depth;
+		};
+
+		TArray<flecs::entity> result;
+		TQueue<SearchEntry> queue;
+
+		ancestor.children([&](flecs::entity child) { queue.Enqueue({ child, 1 }); });
+
+		SearchEntry current;
+		while (queue.Dequeue(current)) {
+			if ((current.entity.has<C>() && ...))
+				result.Add(current.entity);
+
+			if (maxDepth < 0 || current.depth < maxDepth)
+				current.entity.children([&](flecs::entity child) { queue.Enqueue({ child, current.depth + 1 }); });
+		}
+
+		return result;
 	}
 }
