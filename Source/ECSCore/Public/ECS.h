@@ -131,9 +131,28 @@ namespace ECS {
 		while (queue.Dequeue(current)) {
 			if ((current.entity.has<C>() && ...))
 				result.Add(current.entity);
-
 			if (maxDepth < 0 || current.depth < maxDepth)
 				current.entity.children([&](flecs::entity child) { queue.Enqueue({ child, current.depth + 1 }); });
+		}
+
+		return result;
+	}
+
+	template <typename... C>
+	TArray<flecs::entity> FindAncestors(flecs::entity descendant, int32 maxDepth = -1) {
+		static_assert(sizeof...(C) > 0, "FindAncestors needs at least one component type.");
+
+		TArray<flecs::entity> result;
+
+		flecs::entity current = descendant.parent();
+		int32 depth = 1;
+
+		while (current.is_valid() && (maxDepth < 0 || depth <= maxDepth)) {
+			if ((current.has<C>() && ...))
+				result.Add(current);
+
+			current = current.parent();
+			depth++;
 		}
 
 		return result;
