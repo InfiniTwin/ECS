@@ -19,6 +19,8 @@ namespace ECS {
 		world.module<Core>();
 
 		ECS::Scopes.Add(TEXT("[IsA]"), IsARelationship);
+		ECS::Scopes.Add(TEXT("[OrderedTrait]"), OrderedChildrenTrait);
+
 		ECS::Scopes.Add(TEXT("[CORE]"), ECSCoreScope);
 
 		RegisterOpaqueTypes(world);

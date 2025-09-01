@@ -35,7 +35,7 @@
 /* Flecs version macros */
 #define FLECS_VERSION_MAJOR 4  /**< Flecs major version. */
 #define FLECS_VERSION_MINOR 1  /**< Flecs minor version. */
-#define FLECS_VERSION_PATCH 0  /**< Flecs patch version. */
+#define FLECS_VERSION_PATCH 1  /**< Flecs patch version. */
 
 /** Flecs version. */
 #define FLECS_VERSION FLECS_VERSION_IMPL(\
@@ -82,10 +82,10 @@
 
 /* Make sure provided configuration is valid */
 #if defined(FLECS_DEBUG) && defined(FLECS_NDEBUG)
-#error "invalid configuration: cannot both define FLECS_DEBUG and FLECS_NDEBUG"
+#warning "invalid configuration: cannot both define FLECS_DEBUG and FLECS_NDEBUG"
 #endif
 #if defined(FLECS_DEBUG) && defined(NDEBUG)
-#error "invalid configuration: cannot both define FLECS_DEBUG and NDEBUG"
+#warning "invalid configuration: cannot both define FLECS_DEBUG and NDEBUG"
 #endif
 
 /** @def FLECS_DEBUG
@@ -1141,6 +1141,172 @@ typedef struct ecs_allocator_t ecs_allocator_t;
 
 #endif
 
+
+/**
+ * @defgroup core_types Core API Types
+ * Types for core API objects.
+ *
+ * @{
+ */
+
+/** Ids are the things that can be added to an entity.
+ * An id can be an entity or pair, and can have optional id flags. */
+typedef uint64_t ecs_id_t;
+
+/** An entity identifier.
+ * Entity ids consist out of a number unique to the entity in the lower 32 bits,
+ * and a counter used to track entity liveliness in the upper 32 bits. When an
+ * id is recycled, its generation count is increased. This causes recycled ids
+ * to be very large (>4 billion), which is normal. */
+typedef ecs_id_t ecs_entity_t;
+
+/** A type is a list of (component) ids.
+ * Types are used to communicate the "type" of an entity. In most type systems a
+ * typeof operation returns a single type. In ECS however, an entity can have
+ * multiple components, which is why an ECS type consists of a vector of ids.
+ *
+ * The component ids of a type are sorted, which ensures that it doesn't matter
+ * in which order components are added to an entity. For example, if adding
+ * Position then Velocity would result in type [Position, Velocity], first
+ * adding Velocity then Position would also result in type [Position, Velocity].
+ *
+ * Entities are grouped together by type in the ECS storage in tables. The
+ * storage has exactly one table per unique type that is created by the
+ * application that stores all entities and components for that type. This is
+ * also referred to as an archetype.
+ */
+typedef struct {
+    ecs_id_t *array;    /**< Array with ids. */
+    int32_t count;      /**< Number of elements in array. */
+} ecs_type_t;
+
+/** A world is the container for all ECS data and supporting features.
+ * Applications can have multiple worlds, though in most cases will only need
+ * one. Worlds are isolated from each other, and can have separate sets of
+ * systems, components, modules etc.
+ *
+ * If an application has multiple worlds with overlapping components, it is
+ * common (though not strictly required) to use the same component ids across
+ * worlds, which can be achieved by declaring a global component id variable.
+ * To do this in the C API, see the entities/fwd_component_decl example. The
+ * C++ API automatically synchronizes component ids between worlds.
+ *
+ * Component id conflicts between worlds can occur when a world has already used
+ * an id for something else. There are a few ways to avoid this:
+ *
+ * - Ensure to register the same components in each world, in the same order.
+ * - Create a dummy world in which all components are preregistered which
+ *   initializes the global id variables.
+ *
+ * In some use cases, typically when writing tests, multiple worlds are created
+ * and deleted with different components, registered in different order. To
+ * ensure isolation between tests, the C++ API has a `flecs::reset` function
+ * that forces the API to ignore the old component ids. */
+typedef struct ecs_world_t ecs_world_t;
+
+/** A stage enables modification while iterating and from multiple threads */
+typedef struct ecs_stage_t ecs_stage_t;
+
+/** A table stores entities and components for a specific type. */
+typedef struct ecs_table_t ecs_table_t;
+
+/** A term is a single element in a query. */
+typedef struct ecs_term_t ecs_term_t;
+
+/** A query returns entities matching a list of constraints. */
+typedef struct ecs_query_t ecs_query_t;
+
+/** An observer is a system that is invoked when an event matches its query.
+ * Observers allow applications to respond to specific events, such as adding or
+ * removing a component. Observers are created by both specifying a query and
+ * a list of event kinds that should be listened for. An example of an observer
+ * that triggers when a Position component is added to an entity (in C++):
+ *
+ * @code
+ * world.observer<Position>()
+ *   .event(flecs::OnAdd)
+ *   .each([](Position& p) {
+ *     // called when Position is added to an entity
+ *   });
+ * @endcode
+ *
+ * Observers only trigger when the source of the event matches the full observer 
+ * query. For example, an OnAdd observer for Position, Velocity will only 
+ * trigger after both components have been added to the entity. */
+typedef struct ecs_observer_t ecs_observer_t;
+
+/** An observable produces events that can be listened for by an observer.
+ * Currently only the world is observable. In the future, queries will become
+ * observable objects as well. */
+typedef struct ecs_observable_t ecs_observable_t;
+
+/** Type used for iterating iterable objects.
+ * Iterators are objects that provide applications with information
+ * about the currently iterated result, and store any state required for the
+ * iteration. */
+typedef struct ecs_iter_t ecs_iter_t;
+
+/** A ref is a fast way to fetch a component for a specific entity.
+ * Refs are a faster alternative to repeatedly calling ecs_get() for the same
+ * entity/component combination. When comparing the performance of getting a ref
+ * to calling ecs_get(), a ref is typically 3-5x faster.
+ *
+ * Refs achieve this performance by caching internal data structures associated
+ * with the entity and component on the ecs_ref_t object that otherwise would
+ * have to be looked up. */
+typedef struct ecs_ref_t ecs_ref_t;
+
+/** Type hooks are callbacks associated with component lifecycle events.
+ * Typical examples of lifecycle events are construction, destruction, copying
+ * and moving of components. */
+typedef struct ecs_type_hooks_t ecs_type_hooks_t;
+
+/** Type information.
+ * Contains information about a (component) type, such as its size and
+ * alignment and type hooks. */
+typedef struct ecs_type_info_t ecs_type_info_t;
+
+/** Information about an entity, like its table and row. */
+typedef struct ecs_record_t ecs_record_t;
+
+/** Information about a (component) id, such as type info and tables with the id */
+typedef struct ecs_component_record_t ecs_component_record_t;
+
+/** A poly object.
+ * A poly (short for polymorph) object is an object that has a variable list of
+ * capabilities, determined by a mixin table. This is the current list of types
+ * in the flecs API that can be used as an ecs_poly_t:
+ *
+ * - ecs_world_t
+ * - ecs_stage_t
+ * - ecs_query_t
+ *
+ * Functions that accept an ecs_poly_t argument can accept objects of these
+ * types. If the object does not have the requested mixin the API will throw an
+ * assert.
+ *
+ * The poly/mixin framework enables partially overlapping features to be
+ * implemented once, and enables objects of different types to interact with
+ * each other depending on what mixins they have, rather than their type
+ * (in some ways it's like a mini-ECS). Additionally, each poly object has a
+ * header that enables the API to do sanity checking on the input arguments.
+ */
+typedef void ecs_poly_t;
+
+/** Type that stores poly mixins */
+typedef struct ecs_mixins_t ecs_mixins_t;
+
+/** Header for ecs_poly_t objects. */
+typedef struct ecs_header_t {
+    int32_t type;               /**< Magic number indicating which type of flecs object */
+    int32_t refcount;           /**< Refcount, to enable RAII handles */
+    ecs_mixins_t *mixins;       /**< Table with offsets to (optional) mixins */
+} ecs_header_t;
+
+typedef struct ecs_table_record_t ecs_table_record_t;
+
+/** @} */
+
 /**
  * @file vec.h
  * @brief Vector with allocator support.
@@ -1292,6 +1458,14 @@ void ecs_vec_set_min_size(
     ecs_vec_set_min_size(allocator, vec, ECS_SIZEOF(T), elem_count)
 
 FLECS_API
+void ecs_vec_set_min_size_w_type_info(
+    struct ecs_allocator_t *allocator,
+    ecs_vec_t *vec,
+    ecs_size_t size,
+    int32_t elem_count,
+    const ecs_type_info_t *ti);
+
+FLECS_API
 void ecs_vec_set_min_count(
     struct ecs_allocator_t *allocator,
     ecs_vec_t *vec,
@@ -1320,6 +1494,22 @@ void ecs_vec_set_count(
 
 #define ecs_vec_set_count_t(allocator, vec, T, elem_count) \
     ecs_vec_set_count(allocator, vec, ECS_SIZEOF(T), elem_count)
+
+FLECS_API
+void ecs_vec_set_count_w_type_info(
+    struct ecs_allocator_t *allocator,
+    ecs_vec_t *vec,
+    ecs_size_t size,
+    int32_t elem_count,
+    const ecs_type_info_t *ti);
+
+FLECS_API
+void ecs_vec_set_min_count_w_type_info(
+    struct ecs_allocator_t *allocator,
+    ecs_vec_t *vec,
+    ecs_size_t size,
+    int32_t elem_count,
+    const ecs_type_info_t *ti);
 
 FLECS_API
 void* ecs_vec_grow(
@@ -3072,170 +3262,6 @@ extern "C" {
  * @{
  */
 
-/**
- * @defgroup core_types Core API Types
- * Types for core API objects.
- *
- * @{
- */
-
-/** Ids are the things that can be added to an entity.
- * An id can be an entity or pair, and can have optional id flags. */
-typedef uint64_t ecs_id_t;
-
-/** An entity identifier.
- * Entity ids consist out of a number unique to the entity in the lower 32 bits,
- * and a counter used to track entity liveliness in the upper 32 bits. When an
- * id is recycled, its generation count is increased. This causes recycled ids
- * to be very large (>4 billion), which is normal. */
-typedef ecs_id_t ecs_entity_t;
-
-/** A type is a list of (component) ids.
- * Types are used to communicate the "type" of an entity. In most type systems a
- * typeof operation returns a single type. In ECS however, an entity can have
- * multiple components, which is why an ECS type consists of a vector of ids.
- *
- * The component ids of a type are sorted, which ensures that it doesn't matter
- * in which order components are added to an entity. For example, if adding
- * Position then Velocity would result in type [Position, Velocity], first
- * adding Velocity then Position would also result in type [Position, Velocity].
- *
- * Entities are grouped together by type in the ECS storage in tables. The
- * storage has exactly one table per unique type that is created by the
- * application that stores all entities and components for that type. This is
- * also referred to as an archetype.
- */
-typedef struct {
-    ecs_id_t *array;    /**< Array with ids. */
-    int32_t count;      /**< Number of elements in array. */
-} ecs_type_t;
-
-/** A world is the container for all ECS data and supporting features.
- * Applications can have multiple worlds, though in most cases will only need
- * one. Worlds are isolated from each other, and can have separate sets of
- * systems, components, modules etc.
- *
- * If an application has multiple worlds with overlapping components, it is
- * common (though not strictly required) to use the same component ids across
- * worlds, which can be achieved by declaring a global component id variable.
- * To do this in the C API, see the entities/fwd_component_decl example. The
- * C++ API automatically synchronizes component ids between worlds.
- *
- * Component id conflicts between worlds can occur when a world has already used
- * an id for something else. There are a few ways to avoid this:
- *
- * - Ensure to register the same components in each world, in the same order.
- * - Create a dummy world in which all components are preregistered which
- *   initializes the global id variables.
- *
- * In some use cases, typically when writing tests, multiple worlds are created
- * and deleted with different components, registered in different order. To
- * ensure isolation between tests, the C++ API has a `flecs::reset` function
- * that forces the API to ignore the old component ids. */
-typedef struct ecs_world_t ecs_world_t;
-
-/** A stage enables modification while iterating and from multiple threads */
-typedef struct ecs_stage_t ecs_stage_t;
-
-/** A table stores entities and components for a specific type. */
-typedef struct ecs_table_t ecs_table_t;
-
-/** A term is a single element in a query. */
-typedef struct ecs_term_t ecs_term_t;
-
-/** A query returns entities matching a list of constraints. */
-typedef struct ecs_query_t ecs_query_t;
-
-/** An observer is a system that is invoked when an event matches its query.
- * Observers allow applications to respond to specific events, such as adding or
- * removing a component. Observers are created by both specifying a query and
- * a list of event kinds that should be listened for. An example of an observer
- * that triggers when a Position component is added to an entity (in C++):
- *
- * @code
- * world.observer<Position>()
- *   .event(flecs::OnAdd)
- *   .each([](Position& p) {
- *     // called when Position is added to an entity
- *   });
- * @endcode
- *
- * Observers only trigger when the source of the event matches the full observer 
- * query. For example, an OnAdd observer for Position, Velocity will only 
- * trigger after both components have been added to the entity. */
-typedef struct ecs_observer_t ecs_observer_t;
-
-/** An observable produces events that can be listened for by an observer.
- * Currently only the world is observable. In the future, queries will become
- * observable objects as well. */
-typedef struct ecs_observable_t ecs_observable_t;
-
-/** Type used for iterating iterable objects.
- * Iterators are objects that provide applications with information
- * about the currently iterated result, and store any state required for the
- * iteration. */
-typedef struct ecs_iter_t ecs_iter_t;
-
-/** A ref is a fast way to fetch a component for a specific entity.
- * Refs are a faster alternative to repeatedly calling ecs_get() for the same
- * entity/component combination. When comparing the performance of getting a ref
- * to calling ecs_get(), a ref is typically 3-5x faster.
- *
- * Refs achieve this performance by caching internal data structures associated
- * with the entity and component on the ecs_ref_t object that otherwise would
- * have to be looked up. */
-typedef struct ecs_ref_t ecs_ref_t;
-
-/** Type hooks are callbacks associated with component lifecycle events.
- * Typical examples of lifecycle events are construction, destruction, copying
- * and moving of components. */
-typedef struct ecs_type_hooks_t ecs_type_hooks_t;
-
-/** Type information.
- * Contains information about a (component) type, such as its size and
- * alignment and type hooks. */
-typedef struct ecs_type_info_t ecs_type_info_t;
-
-/** Information about an entity, like its table and row. */
-typedef struct ecs_record_t ecs_record_t;
-
-/** Information about a (component) id, such as type info and tables with the id */
-typedef struct ecs_component_record_t ecs_component_record_t;
-
-/** A poly object.
- * A poly (short for polymorph) object is an object that has a variable list of
- * capabilities, determined by a mixin table. This is the current list of types
- * in the flecs API that can be used as an ecs_poly_t:
- *
- * - ecs_world_t
- * - ecs_stage_t
- * - ecs_query_t
- *
- * Functions that accept an ecs_poly_t argument can accept objects of these
- * types. If the object does not have the requested mixin the API will throw an
- * assert.
- *
- * The poly/mixin framework enables partially overlapping features to be
- * implemented once, and enables objects of different types to interact with
- * each other depending on what mixins they have, rather than their type
- * (in some ways it's like a mini-ECS). Additionally, each poly object has a
- * header that enables the API to do sanity checking on the input arguments.
- */
-typedef void ecs_poly_t;
-
-/** Type that stores poly mixins */
-typedef struct ecs_mixins_t ecs_mixins_t;
-
-/** Header for ecs_poly_t objects. */
-typedef struct ecs_header_t {
-    int32_t type;               /**< Magic number indicating which type of flecs object */
-    int32_t refcount;           /**< Refcount, to enable RAII handles */
-    ecs_mixins_t *mixins;       /**< Table with offsets to (optional) mixins */
-} ecs_header_t;
-
-typedef struct ecs_table_record_t ecs_table_record_t;
-
-/** @} */
 
 /**
  * @defgroup function_types Function types.
@@ -14015,7 +14041,7 @@ typedef struct ecs_from_json_desc_t {
     /** Callback that allows for specifying a custom lookup function. The
      * default behavior uses ecs_lookup() */
     ecs_entity_t (*lookup_action)(
-        const ecs_world_t*,
+        ecs_world_t*,
         const char *value,
         void *ctx);
     void *lookup_ctx;
@@ -15434,6 +15460,8 @@ typedef struct ecs_expr_eval_desc_t {
     bool allow_unresolved_identifiers;
 
     ecs_script_runtime_t *runtime;   /**< Reusable runtime (optional) */
+
+    void *script_visitor;            /**< For internal usage */
 } ecs_expr_eval_desc_t;
 
 /** Run expression.
@@ -15529,7 +15557,7 @@ typedef struct ecs_const_var_desc_t {
     void *value;
 } ecs_const_var_desc_t;
 
-/** Create a const variable that can be accessed by scripts. 
+/** Create a const variable that can be accessed by scripts.
  * 
  * @param world The world.
  * @param desc Const var parameters.
@@ -15542,6 +15570,19 @@ ecs_entity_t ecs_const_var_init(
 
 #define ecs_const_var(world, ...)\
     ecs_const_var_init(world, &(ecs_const_var_desc_t)__VA_ARGS__)
+
+
+/** Returns value for a const variable. 
+ * This returns the value for a const variable that is created either with
+ * ecs_const_var_init, or in a script with "export const v: ...".
+ * 
+ * @param world The world.
+ * @param var The variable associated with the entity. 
+ */
+FLECS_API
+ecs_value_t ecs_const_var_get(
+    const ecs_world_t *world,
+    ecs_entity_t var);
 
 /* Functions */
 
@@ -16117,6 +16158,7 @@ FLECS_API extern const ecs_entity_t ecs_id(EcsTypeSerializer);  /**< Id for comp
 FLECS_API extern const ecs_entity_t ecs_id(EcsPrimitive);       /**< Id for component that stores reflection data for a primitive type. */
 FLECS_API extern const ecs_entity_t ecs_id(EcsEnum);            /**< Id for component that stores reflection data for an enum type. */
 FLECS_API extern const ecs_entity_t ecs_id(EcsBitmask);         /**< Id for component that stores reflection data for a bitmask type. */
+FLECS_API extern const ecs_entity_t ecs_id(EcsConstants);       /**< Id for component that stores reflection data for a constants. */
 FLECS_API extern const ecs_entity_t ecs_id(EcsMember);          /**< Id for component that stores reflection data for struct members. */
 FLECS_API extern const ecs_entity_t ecs_id(EcsMemberRanges);    /**< Id for component that stores min/max ranges for member values. */
 FLECS_API extern const ecs_entity_t ecs_id(EcsStruct);          /**< Id for component that stores reflection data for a struct type. */
@@ -16198,7 +16240,7 @@ typedef struct EcsPrimitive {
 /** Component added to member entities */
 typedef struct EcsMember {
     ecs_entity_t type;                             /**< Member type. */
-    int32_t count;                                 /**< Number of elements (for inline arrays). */
+    int32_t count;                                 /**< Number of elements for inline arrays. Leave to 0 for non-array members. */
     ecs_entity_t unit;                             /**< Member unit. */
     int32_t offset;                                /**< Member offset. */
     bool use_offset;                               /**< If offset should be explicitly used. */
@@ -16225,7 +16267,8 @@ typedef struct ecs_member_t {
     /** Member type. */
     ecs_entity_t type;
 
-    /** Element count (for inline arrays). May be set when used with ecs_struct_desc_t */
+    /** Element count (for inline arrays). May be set when used with 
+     * ecs_struct_desc_t. Leave to 0 for non-array members. */
     int32_t count;
 
     /** May be set when used with ecs_struct_desc_t. Member offset. */
@@ -16284,12 +16327,6 @@ typedef struct ecs_enum_constant_t {
 /** Component added to enum type entities */
 typedef struct EcsEnum {
     ecs_entity_t underlying_type;
-
-    /** Populated from child entities with Constant component */
-    ecs_map_t constants; /**< map<i32_t, ecs_enum_constant_t> */
-
-    /** Stores the constants in registration order */
-    ecs_vec_t ordered_constants; /**< vector<ecs_enum_constants_t> */
 } EcsEnum;
 
 /** Type that describes an bitmask constant */
@@ -16309,11 +16346,17 @@ typedef struct ecs_bitmask_constant_t {
 
 /** Component added to bitmask type entities */
 typedef struct EcsBitmask {
-    /* Populated from child entities with Constant component */
-    ecs_map_t constants; /**< map<u32_t, ecs_bitmask_constant_t> */
-    /** Stores the constants in registration order */
-    ecs_vec_t ordered_constants; /**< vector<ecs_bitmask_constants_t>  */
+    int32_t dummy_;
 } EcsBitmask;
+
+/** Component with datastructures for looking up enum/bitmask constants. */
+typedef struct EcsConstants {
+    /** Populated from child entities with Constant component */
+    ecs_map_t *constants; /**< map<i32_t, ecs_enum_constant_t> */
+
+    /** Stores the constants in registration order */
+    ecs_vec_t ordered_constants; /**< vector<ecs_enum_constants_t> */
+} EcsConstants;
 
 /** Component added to array type entities */
 typedef struct EcsArray {
@@ -16524,19 +16567,24 @@ typedef struct EcsUnitPrefix {
  * instructions that tells a serializer what kind of fields can be found in a
  * type at which offsets.
 */
-typedef enum ecs_meta_type_op_kind_t {
-    EcsOpArray,
-    EcsOpVector,
-    EcsOpOpaque,
-    EcsOpPush,
-    EcsOpPop,
+typedef enum ecs_meta_op_kind_t {
+    EcsOpPushStruct,   /**< Push struct. */
+    EcsOpPushArray,    /**< Push array. */
+    EcsOpPushVector,   /**< Push vector. */
+    EcsOpPop,          /**< Pop scope. */
 
-    EcsOpScope, /**< Marks last constant that can open/close a scope */
+    EcsOpOpaqueStruct, /**< Opaque struct. */
+    EcsOpOpaqueArray,  /**< Opaque array. */
+    EcsOpOpaqueVector, /**< Opaque vector. */
+    EcsOpForward,      /**< Forward to type. Allows for recursive types. */
 
+    EcsOpScope,        /**< Marks last constant that can open/close a scope */
+
+    EcsOpOpaqueValue,  /**< Opaque value. */
     EcsOpEnum,
     EcsOpBitmask,
 
-    EcsOpPrimitive, /**< Marks first constant that's a primitive */
+    EcsOpPrimitive,    /**< Marks first constant that's a primitive */
 
     EcsOpBool,
     EcsOpChar,
@@ -16557,26 +16605,31 @@ typedef enum ecs_meta_type_op_kind_t {
     EcsOpEntity,
     EcsOpId,
     EcsMetaTypeOpKindLast = EcsOpId
-} ecs_meta_type_op_kind_t;
+} ecs_meta_op_kind_t;
 
 /** Meta type serializer instruction data. */
-typedef struct ecs_meta_type_op_t {
-    ecs_meta_type_op_kind_t kind;                  /**< Instruction opcode. */
-    ecs_size_t offset;                             /**< Offset of current field */
-    int32_t count;                                 /**< Number of elements (for inline arrays). */
+typedef struct ecs_meta_op_t {
+    ecs_meta_op_kind_t kind;                       /**< Instruction opcode. */
+    ecs_meta_op_kind_t underlying_kind;            /**< Underlying type kind (for enums). */
+    ecs_size_t offset;                             /**< Offset of current field. */
     const char *name;                              /**< Name of value (only used for struct members) */
-    int32_t op_count;                              /**< Number of operations until next field or end */
-    ecs_size_t size;                               /**< Size of type of operation */
+    ecs_size_t elem_size;                          /**< Element size (for PushArray/PushVector) and element count (for PopArray) */
+    int16_t op_count;                              /**< Number of operations until next field or end */
+    int16_t member_index;                          /**< Index of member in struct */
     ecs_entity_t type;                             /**< Type entity */
-    int32_t member_index;                          /**< Index of member in struct */
-    ecs_hashmap_t *members;                        /**< string -> member index (structs only) */
-} ecs_meta_type_op_t;
+    const ecs_type_info_t *type_info;              /**< Type info */
+    union {
+        ecs_hashmap_t *members;                    /**< string -> member index (structs) */
+        ecs_map_t *constants;                      /**< (u)int -> constant entity (enums/bitmasks) */
+        ecs_meta_serialize_t opaque;               /**< Serialize callback for opaque types */
+    } is;
+} ecs_meta_op_t;
 
 /** Component that stores the type serializer.
- * Added to all types with reflection data.
- */
+ * Added to all types with reflection data. */
 typedef struct EcsTypeSerializer {
-    ecs_vec_t ops;      /**< vector<ecs_meta_type_op_t> */
+    ecs_type_kind_t kind;         /**< Quick access to type kind (same as EcsType) */
+    ecs_vec_t ops;                /**< vector<ecs_meta_op_t> */
 } EcsTypeSerializer;
 
 
@@ -16590,33 +16643,37 @@ typedef struct EcsTypeSerializer {
 /** Type with information about currently serialized scope. */
 typedef struct ecs_meta_scope_t {
     ecs_entity_t type;                             /**< The type being iterated */
-    ecs_meta_type_op_t *ops;                       /**< The type operations (see ecs_meta_type_op_t) */
-    int32_t op_count;                              /**< Number of operations in ops array to process */
-    int32_t op_cur;                                /**< Current operation */
-    int32_t elem_cur;                              /**< Current element (for collections) */
-    int32_t prev_depth;                            /**< Depth to restore, in case dotmember was used */
-    void *ptr;                                     /**< Pointer to the value being iterated */
-    const EcsComponent *comp;                      /**< Pointer to component, in case size/alignment is needed */
+    ecs_meta_op_t *ops;                       /**< The type operations (see ecs_meta_op_t) */
+    int16_t ops_count;                             /**< Number of elements in ops */
+    int16_t ops_cur;                               /**< Current element in ops */
+    int16_t prev_depth;                            /**< Depth to restore, in case dotmember was used */
+    void *ptr;                                     /**< Pointer to ops[0] */
     const EcsOpaque *opaque;                       /**< Opaque type interface */
-    ecs_vec_t *vector;                             /**< Current vector, in case a vector is iterated */
     ecs_hashmap_t *members;                        /**< string -> member index */
     bool is_collection;                            /**< Is the scope iterating elements? */
-    bool is_inline_array;                          /**< Is the scope iterating an inline array? */
-    bool is_empty_scope;                           /**< Was scope populated (for collections) */
+    bool is_empty_scope;                           /**< Was scope populated (for vectors) */
+    bool is_moved_scope;                           /**< Was scope moved in (with ecs_meta_elem, for vectors) */
+    int32_t elem, elem_count;                      /**< Set for collections */
 } ecs_meta_scope_t;
 
 /** Type that enables iterating/populating a value using reflection data. */
 typedef struct ecs_meta_cursor_t {
     const ecs_world_t *world;                      /**< The world. */
     ecs_meta_scope_t scope[ECS_META_MAX_SCOPE_DEPTH]; /**< Cursor scope stack. */
-    int32_t depth;                                 /**< Current scope depth. */
+    int16_t depth;                                 /**< Current scope depth. */
     bool valid;                                    /**< Does the cursor point to a valid field. */
     bool is_primitive_scope;                       /**< If in root scope, this allows for a push for primitive types */
 
     /** Custom entity lookup action for overriding default ecs_lookup */
-    ecs_entity_t (*lookup_action)(const ecs_world_t*, const char*, void*);
+    ecs_entity_t (*lookup_action)(ecs_world_t*, const char*, void*);
     void *lookup_ctx;                              /**< Context for lookup_action */
 } ecs_meta_cursor_t;
+
+/** Convert serializer to string. */
+FLECS_API
+char* ecs_meta_serializer_to_str(
+    ecs_world_t *world,
+    ecs_entity_t type);
 
 /** Create meta cursor.
  * A meta cursor allows for walking over, reading and writing a value without
@@ -16949,6 +17006,7 @@ ecs_entity_t ecs_meta_get_entity(
  * @param cursor The cursor.
  * @return The value of the current field.
  */
+FLECS_API
 ecs_id_t ecs_meta_get_id(
     const ecs_meta_cursor_t *cursor);
 
@@ -16961,6 +17019,19 @@ ecs_id_t ecs_meta_get_id(
 FLECS_API
 double ecs_meta_ptr_to_float(
     ecs_primitive_kind_t type_kind,
+    const void *ptr);
+
+/** Get element count for array/vector operations. 
+ * The operation must either be EcsOpPushArray or EcsOpPushVector. If the 
+ * operation is EcsOpPushArray, the provided pointer may be NULL.
+ * 
+ * @param op The serializer operation.
+ * @param ptr Pointer to the array/vector value.
+ * @return The number of elements.
+ */
+FLECS_API
+ecs_size_t ecs_meta_op_get_elem_count(
+    const ecs_meta_op_t *op,
     const void *ptr);
 
 /* API functions for creating meta types */
@@ -18789,8 +18860,10 @@ public:
         has_contiguous = true;
         contiguous_until = 0;
 
+#if FLECS_CPP_ENUM_REFLECTION_SUPPORT
         enum_reflection<E, reflection_init>::
             template each_enum< static_cast<U>(enum_last<E>::value) >(*this);
+#endif
     }
 
     static enum_type<E>& get() {
@@ -18829,7 +18902,6 @@ public:
 
     int min;
     int max;
-    bool has_contiguous;
 
     // If enum constants start not-sparse, contiguous_until will be the index of
     // the first sparse value, or end of the constants array
@@ -18841,8 +18913,16 @@ public:
             template each_enum< static_cast<U>(enum_last<E>::value) >();
 
     // Constants array is sized to the number of found-constants, or 1 
-    // to avoid 0-sized array
+    // to avoid 0-sized array.
+    #ifdef FLECS_CPP_ENUM_REFLECTION
     enum_constant<U> constants[constants_size? constants_size: 1] = {};
+    bool has_contiguous;
+    #else
+    // If we're not using enum reflection, we cannot statically determine the
+    // upper bound of the enum, so use 128.
+    enum_constant<U> constants[128] = {};
+    bool has_contiguous = true; // Assume contiguous ids
+    #endif
 };
 
 template <typename E, if_t< is_enum<E>::value > = 0>
@@ -18900,6 +18980,7 @@ struct enum_data {
         if (impl_.max < 0) {
             return -1;
         }
+
         // Check if value is in contiguous lookup section
         if (impl_.has_contiguous && value < impl_.contiguous_until && value >= 0) {
             return static_cast<int>(value);
@@ -18939,6 +19020,30 @@ struct enum_data {
     flecs::entity entity() const;
     flecs::entity entity(U value) const;
     flecs::entity entity(E value) const;
+
+    /**
+     * @brief Manually register constant for enum.
+     * 
+     * If automatic enum reflection is not supported, provide method for 
+     * manually registering constant.
+     */
+    #ifdef FLECS_CPP_NO_ENUM_REFLECTION
+    void register_constant(flecs::world_t *world, U v, flecs::entity_t e) {
+        if (v < 128) {
+            if (!impl_.constants[v].index) {
+                impl_.constants[v].index = flecs_component_ids_index_get();
+            }
+
+            flecs_component_ids_set(world, impl_.constants[v].index, e);
+
+            impl_.max ++;
+
+            if (impl_.contiguous_until <= v) {
+                impl_.contiguous_until = v + 1;
+            }
+        }
+    }
+    #endif
 
     flecs::world_t *world_;
     _::enum_type<E>& impl_;
@@ -19883,6 +19988,8 @@ static const primitive_kind_t IPtr = EcsIPtr;
 static const primitive_kind_t String = EcsString;
 static const primitive_kind_t Entity = EcsEntity;
 static const primitive_kind_t PrimitiveKindLast = EcsPrimitiveKindLast;
+
+using op_t = ecs_meta_op_t;
 
 /** @} */
 
@@ -21051,6 +21158,16 @@ namespace flecs {
 
 struct script_builder;
 
+using Script = EcsScript;
+
+namespace script {
+namespace _ {
+
+void init(flecs::world& world);
+
+} // namespace _
+}
+
 /** @} */
 
 }
@@ -21824,7 +21941,7 @@ inline void set(world_t *world, flecs::entity_t entity, T&& value, flecs::id_t i
     ecs_cpp_get_mut_t res = ecs_cpp_set(world, entity, id, &value, sizeof(T));
 
     T& dst = *static_cast<remove_reference_t<T>*>(res.ptr);
-    dst = FLECS_MOV(value);
+    dst = FLECS_FWD(value);
 
     if (res.call_modified) {
         ecs_modified_id(world, entity, id);
@@ -21840,7 +21957,7 @@ inline void set(world_t *world, flecs::entity_t entity, const T& value, flecs::i
     ecs_cpp_get_mut_t res = ecs_cpp_set(world, entity, id, &value, sizeof(T));
 
     T& dst = *static_cast<remove_reference_t<T>*>(res.ptr);
-    dst = FLECS_MOV(value);
+    dst = value;
 
     if (res.call_modified) {
         ecs_modified_id(world, entity, id);
@@ -21871,7 +21988,7 @@ inline void assign(world_t *world, flecs::entity_t entity, T&& value, flecs::id_
         world, entity, id, &value, sizeof(T));
 
     T& dst = *static_cast<remove_reference_t<T>*>(res.ptr);
-    dst = FLECS_MOV(value);
+    dst = FLECS_FWD(value);
 
     if (res.call_modified) {
         ecs_modified_id(world, entity, id);
@@ -21888,7 +22005,7 @@ inline void assign(world_t *world, flecs::entity_t entity, const T& value, flecs
         world, entity, id, &value, sizeof(T));
 
     T& dst = *static_cast<remove_reference_t<T>*>(res.ptr);
-    dst = FLECS_MOV(value);
+    dst = value;
 
     if (res.call_modified) {
         ecs_modified_id(world, entity, id);
@@ -23675,6 +23792,46 @@ flecs::string to_expr(const T* value) {
     return to_expr(tid, value);
 }
 
+/** Get value of exported script variable.
+ * This operation will panic if no const var with the provided name was found,
+ * or if the type of the variable cannot be converted to the provided type.
+ * 
+ * An exported variable can be created in a script like this:
+ * 
+ * @code
+ * export const x = f64: 10
+ * @endcode
+ * 
+ * See the Flecs script manual for more details.
+ * 
+ * @tparam T The type of the value to obtain.
+ * @param name The name of the exported variable.
+ * @param default_value Optional default value. Returned when const var lookup failed.
+ * @return The value of the variable.
+ */
+template <typename T>
+T get_const_var(const char *name, const T& default_value = {}) const;
+
+/** Get value of exported script variable.
+ * This operation will panic if no const var with the provided name was found,
+ * or if the type of the variable cannot be converted to the provided type.
+ * 
+ * An exported variable can be created in a script like this:
+ * 
+ * @code
+ * export const x = f64: 10
+ * @endcode
+ * 
+ * See the Flecs script manual for more details.
+ * 
+ * @tparam T The type of the value to obtain.
+ * @param name The name of the exported variable.
+ * @param out Optional pointer to out variable. Can be used to automatically deduce T.
+ * @param default_value Optional default value. Returned when const var lookup failed.
+ */
+template <typename T>
+void get_const_var(const char *name, T& out, const T& default_value = {}) const;
+
 
 /** @} */
 
@@ -23735,7 +23892,7 @@ flecs::entity vector();
  * @memberof flecs::world
  * @ingroup cpp_addons_json
  */
-flecs::string to_json(flecs::entity_t tid, const void* value) {
+flecs::string to_json(flecs::entity_t tid, const void* value) const {
     char *json = ecs_ptr_to_json(world_, tid, value);
     return flecs::string(json);
 }
@@ -23746,7 +23903,7 @@ flecs::string to_json(flecs::entity_t tid, const void* value) {
  * @ingroup cpp_addons_json
  */
 template <typename T>
-flecs::string to_json(const T* value) {
+flecs::string to_json(const T* value) const {
     flecs::entity_t tid = _::type<T>::id(world_);
     return to_json(tid, value);
 }
@@ -23756,7 +23913,7 @@ flecs::string to_json(const T* value) {
  * @memberof flecs::world
  * @ingroup cpp_addons_json
  */
-flecs::string to_json() {
+flecs::string to_json() const {
     return flecs::string( ecs_world_to_json(world_, nullptr) );
 }
 
@@ -29828,6 +29985,12 @@ component<T>& constant(const char *name, T value) {
     *ptr = static_cast<U>(value);
     ecs_modified_id(world_, eid, pair);
 
+    // If we're not using automatic enum reflection, manually set static data
+    #ifdef FLECS_CPP_NO_ENUM_REFLECTION
+    auto et = enum_type<T>(world_);
+    et.register_constant(world_, static_cast<U>(value), eid);
+    #endif
+
     return *this;
 }
 
@@ -32952,17 +33115,11 @@ namespace flecs {
 
 template <typename E>
 inline E entity_view::to_constant() const {
-#ifdef FLECS_META
     using U = typename std::underlying_type<E>::type;
     const E* ptr = static_cast<const E*>(ecs_get_id(world_, id_, 
         ecs_pair(flecs::Constant, _::type<U>::id(world_))));
     ecs_assert(ptr != NULL, ECS_INVALID_PARAMETER, "entity is not a constant");
     return ptr[0];
-#else
-    ecs_assert(false, ECS_UNSUPPORTED,
-        "operation not supported without FLECS_META addon");
-    return E();
-#endif
 }
 
 template <typename E, if_t< is_enum<E>::value >>
@@ -34747,6 +34904,191 @@ inline flecs::entity script_builder::run() const {
     return flecs::entity(world_, e);
 }
 
+namespace _ {
+
+    inline ecs_value_t get_const_var(const flecs::world_t *world, const char *name) {
+        flecs::entity_t v = ecs_lookup_path_w_sep(
+            world, 0, name, "::", "::", false);
+        if (!v) {
+            ecs_warn("unresolved const variable '%s', returning default", name);
+            return {};
+        }
+
+        ecs_value_t value = ecs_const_var_get(world, v);
+        if (value.ptr == nullptr) {
+            ecs_warn("entity '%s' is not a const variable, returning default",
+                name);
+            return {};
+        }
+
+        return value;
+    }
+
+    template <typename T>
+    inline T get_const_value(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const T& default_value) 
+    {
+        char *requested_type = ecs_get_path(world, type);
+        char *var_type = ecs_get_path(world, value.type);
+        ecs_warn("cannot cast const variable '%s' from type '%s' to '%s', "
+                    "returning default", name, var_type, requested_type);
+        ecs_os_free(requested_type);
+        ecs_os_free(var_type);
+        return default_value;
+    }
+
+    template <>
+    inline char get_const_value<char>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const char& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return ecs_meta_get_char(&cur);
+    }
+
+    template <>
+    inline int8_t get_const_value<int8_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const int8_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return static_cast<int8_t>(ecs_meta_get_int(&cur));
+    }
+
+    template <>
+    inline int16_t get_const_value<int16_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const int16_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return static_cast<int16_t>(ecs_meta_get_int(&cur));
+    }
+
+    template <>
+    inline int32_t get_const_value<int32_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const int32_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return static_cast<int32_t>(ecs_meta_get_int(&cur));
+    }
+
+    template <>
+    inline int64_t get_const_value<int64_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const int64_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return ecs_meta_get_int(&cur);
+    }
+
+    template <>
+    inline uint8_t get_const_value<uint8_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const uint8_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return static_cast<uint8_t>(ecs_meta_get_uint(&cur));
+    }
+
+    template <>
+    inline uint16_t get_const_value<uint16_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const uint16_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return static_cast<uint16_t>(ecs_meta_get_uint(&cur));
+    }
+
+    template <>
+    inline uint32_t get_const_value<uint32_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const uint32_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return static_cast<uint32_t>(ecs_meta_get_uint(&cur));
+    }
+
+    template <>
+    inline uint64_t get_const_value<uint64_t>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const uint64_t& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return ecs_meta_get_uint(&cur);
+    }
+
+    template <>
+    inline float get_const_value<float>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const float& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return static_cast<float>(ecs_meta_get_float(&cur));
+    }
+
+    template <>
+    inline double get_const_value<double>(
+        flecs::world_t *world, const char *name, ecs_value_t value, ecs_entity_t type, const double& default_value) 
+    {
+        (void)name; (void)type; (void)default_value;
+        ecs_meta_cursor_t cur = ecs_meta_cursor(world, value.type, value.ptr);
+        return ecs_meta_get_float(&cur);
+    }
+}
+
+template <typename T>
+inline T world::get_const_var(
+    const char *name, 
+    const T& default_value) const 
+{
+    ecs_value_t value = flecs::_::get_const_var(world_, name);
+    if (!value.ptr) {
+        return default_value;
+    }
+
+    flecs::id_t type = flecs::_::type<T>::id(world_);
+    if (type == value.type) {
+        return *(static_cast<T*>(value.ptr));
+    }
+
+    return flecs::_::get_const_value<T>(
+        world_, name, value, type, default_value);
+}
+
+template <typename T>
+void world::get_const_var(
+    const char *name, 
+    T& out, 
+    const T& default_value) const 
+{
+    ecs_value_t value = flecs::_::get_const_var(world_, name);
+    if (!value.ptr) {
+        out = default_value;
+        return;
+    }
+
+    flecs::id_t type = flecs::_::type<T>::id(world_);
+    if (type == value.type) {
+        out = *(static_cast<T*>(value.ptr));
+        return;
+    }
+
+    out = flecs::_::get_const_value<T>(
+        world_, name, value, type, default_value);
+}
+
+
+namespace script {
+namespace _ {
+
+inline void init(flecs::world& world) {
+    world.component<Script>("flecs::script::Script");
+}
+
+}
+}
+
 }
 
 #endif
@@ -34979,6 +35321,9 @@ inline void world::init_builtin_components() {
 #   endif
 #   ifdef FLECS_META
     meta::_::init(*this);
+#   endif
+#   ifdef FLECS_SCRIPT
+    script::_::init(*this);
 #   endif
 }
 
