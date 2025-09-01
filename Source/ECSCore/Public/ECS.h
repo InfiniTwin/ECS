@@ -113,6 +113,15 @@ namespace ECS {
 		return false;
 	}
 
+	static inline bool HasChildren(flecs::entity entity) {
+		bool hasChildren = false;
+		entity.children([&](flecs::entity child) {
+			hasChildren = true;
+			return false;
+			});
+		return hasChildren;
+	}
+
 	template <typename... C>
 	TArray<flecs::entity> FindDescendants(flecs::entity ancestor, int32 maxDepth = -1) {
 		static_assert(sizeof...(C) > 0, "FindDescendants needs at least one component type.");
