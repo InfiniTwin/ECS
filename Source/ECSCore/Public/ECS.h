@@ -76,6 +76,12 @@ namespace ECS {
 		return result;
 	}
 
+	static inline FString CleanCode(const FString& code) {
+		FString clean = code;
+		clean.ReplaceInline(TEXT("$"), TEXT("\\$"));
+		return clean;
+	}
+
 	static inline void GetInstances(
 		flecs::world& world,
 		const flecs::entity prefab,

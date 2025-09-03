@@ -6,8 +6,8 @@ namespace ECS {
 	TMap<FString, FString> Scopes;
 
 	const TMap<FString, FString>& EmptyTokens() {
-		static const TMap<FString, FString> Empty;
-		return Empty;
+		static const TMap<FString, FString> empty;
+		return empty;
 	}
 
 	TMap<FString, FString> Tokens(const TArray<TPair<FString, FString>>& pairs) {
