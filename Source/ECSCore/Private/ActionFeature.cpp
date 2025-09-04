@@ -5,7 +5,7 @@
 #include "ECS.h"
 
 namespace ECS {
-	void ActionFeature::RegisterComponents(flecs::world& world) {
+	void ActionFeature::CreateComponents(flecs::world& world) {
 		using namespace ECS;
 		world.component<Action>().add(flecs::CanToggle);
 		world.component<Invert>().add(flecs::CanToggle);

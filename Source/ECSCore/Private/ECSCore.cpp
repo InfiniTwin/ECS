@@ -25,7 +25,7 @@ namespace ECS {
 
 		RegisterOpaqueTypes(world);
 
-		ActionFeature::RegisterComponents(world);
+		ActionFeature::CreateComponents(world);
 		ActionFeature::CreateObservers(world);
 		ActionFeature::CreateSystems(world);
 	}
