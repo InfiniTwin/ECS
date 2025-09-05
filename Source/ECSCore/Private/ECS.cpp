@@ -48,11 +48,11 @@ namespace ECS {
 		ecs_script_eval_result_t result = { 0 };
 
 		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*formated), &result)) {
-			UE_LOG(LogTemp, Error, TEXT(">>> Failed to run > %s < Script: %s"), *name, UTF8_TO_TCHAR(result.error));
+			UE_LOG(LogTemp, Error, TEXT(">>> Error: %s\nScript: %s"), UTF8_TO_TCHAR(result.error), *name);
 			ecs_os_free(result.error);
 		}
 
-		UE_LOG(LogTemp, Warning, TEXT(">>> Ran >%s< Flecs Script:\n%s"), *name, *formated);
+		UE_LOG(LogTemp, Warning, TEXT(">>> Success: %s\n%s"), *name, *formated);
 	}
 
 	TArray<FString> GetEntityPaths(const FString& scriptText) {
