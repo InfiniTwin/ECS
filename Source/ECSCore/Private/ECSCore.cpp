@@ -56,16 +56,15 @@ namespace ECS {
 			.member<double>(MEMBER(FVector2D::X))
 			.member<double>(MEMBER(FVector2D::Y));
 
-		world.component<FVector3f>(MEMBER(FVector3f))
-			.member<float>(MEMBER(FVector3f::X))
-			.member<float>(MEMBER(FVector3f::Y))
-			.member<float>(MEMBER(FVector3f::Z));
+		world.component<FVector>(MEMBER(FVector))
+			.member<double>(MEMBER(FVector::X))
+			.member<double>(MEMBER(FVector::Y))
+			.member<double>(MEMBER(FVector::Z));
 
-		world.component<FVector4f>(MEMBER(FVector4f))
-			.member<float>(MEMBER(FVector4f::X))
-			.member<float>(MEMBER(FVector4f::Y))
-			.member<float>(MEMBER(FVector4f::Z))
-			.member<float>(MEMBER(FVector4f::W));
+		world.component<FRotator>(MEMBER(FRotator))
+			.member<double>(MEMBER(FRotator::Pitch))
+			.member<double>(MEMBER(FRotator::Yaw))
+			.member<double>(MEMBER(FRotator::Roll));
 
 		world.component<FMargin>(MEMBER(FMargin))
 			.member<float>(MEMBER(FMargin::Left))
@@ -78,10 +77,5 @@ namespace ECS {
 			.member<float>(MEMBER(FLinearColor::G))
 			.member<float>(MEMBER(FLinearColor::B))
 			.member<float>(MEMBER(FLinearColor::A));
-
-		world.component<TArray<int>>("Array_int").opaque(ArrayType<int>);
-		world.component<TArray<float>>("Array_float").opaque(ArrayType<float>);
-		world.component<TArray<FVector3f>>("Array_FVector3f").opaque(ArrayType<FVector3f>);
-		world.component<TArray<FVector4f>>("Array_FVector4f").opaque(ArrayType<FVector4f>);
 	}
 }

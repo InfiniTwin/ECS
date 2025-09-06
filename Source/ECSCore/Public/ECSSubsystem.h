@@ -8,8 +8,7 @@
 #include "ECSSubsystem.generated.h"
 
 UCLASS()
-class ECSCORE_API UECSSubsystem : public UGameInstanceSubsystem
-{
+class ECSCORE_API UECSSubsystem : public UGameInstanceSubsystem {
 	GENERATED_BODY()
 
 public:
