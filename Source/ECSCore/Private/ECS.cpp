@@ -48,8 +48,9 @@ namespace ECS {
 		ecs_script_eval_result_t result = { 0 };
 
 		if (ecs_script_run(world, TCHAR_TO_ANSI(*name), TCHAR_TO_UTF8(*formated), &result)) {
-			UE_LOG(LogTemp, Error, TEXT(">>> Error: %s\nScript: %s"), UTF8_TO_TCHAR(result.error), *name);
+			UE_LOG(LogTemp, Error, TEXT(">>> Error: %s\nScript: %s\n%s"), UTF8_TO_TCHAR(result.error), *name, *formated);
 			ecs_os_free(result.error);
+			return;
 		}
 
 		UE_LOG(LogTemp, Warning, TEXT(">>> Success: %s\n%s"), *name, *formated);
